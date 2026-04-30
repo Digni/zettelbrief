@@ -1,0 +1,8 @@
+schema: spec-driven
+
+context: |
+  Tech stack: Go, SQLite (FTS5), Cobra CLI
+  Domain: CLI tool that turns Obsidian vault notes into agent briefing packs
+  Conventions: standard Go project layout, conventional commits
+  Obsidian vault path: /Users/fabianfreimuller/Library/Mobile Documents/iCloud~md~obsidian/Documents/Default
+  Note classification is passive (path + frontmatter), not prescriptive

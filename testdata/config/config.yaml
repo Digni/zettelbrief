@@ -1,0 +1,13 @@
+vault_path: ../vault
+projects:
+  VetZ:
+    folders:
+      - 1.Projects/VetZ
+      - 1.Projects/VetZ/Backend
+    aliases:
+      - Vetz
+  IReckonu:
+    folders:
+      - 1.Projects/IReckonu
+    aliases:
+      - I Reckonu

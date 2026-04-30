@@ -27,6 +27,12 @@ go.work.sum
 # env file
 .env
 
+# zettelbrief runtime data (contains copied private vault content)
+.zettelbrief/*
+!.zettelbrief/config.yaml
+.zettelbrief/zettelbrief.db*
+.zettelbrief/briefs/
+
 # Editor/IDE
 # .idea/
 # .vscode/

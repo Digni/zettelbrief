@@ -1,0 +1,125 @@
+## ADDED Requirements
+
+### Requirement: SQLite database location and privacy
+The system SHALL create and manage a SQLite database at `.zettelbrief/zettelbrief.db` relative to the repository root or current working directory used for the project. The `.zettelbrief/` directory SHALL be created if it does not exist. The runtime directory and database file SHALL use restrictive local permissions where supported because the database contains copied private note content.
+
+#### Scenario: First scan creates database
+- **WHEN** `zettelbrief scan --project VetZ` is run for the first time
+- **THEN** `.zettelbrief/zettelbrief.db` is created with the full schema
+- **AND** `.zettelbrief/` is created with mode `0700` where supported
+- **AND** the database file is created with mode `0600` where supported
+
+#### Scenario: Subsequent scans reuse existing database
+- **WHEN** `zettelbrief scan --project VetZ` is run and `.zettelbrief/zettelbrief.db` already exists
+- **THEN** the existing database is opened and used without re-creating the schema
+
+### Requirement: Schema migration tracking
+The database SHALL contain a `schema_migrations` table that records applied schema versions.
+
+#### Scenario: Fresh database migrated
+- **WHEN** a new database is opened
+- **THEN** all Change 1 schema objects are created
+- **AND** the applied migration version is recorded
+
+#### Scenario: Existing database opened
+- **WHEN** an existing database has already applied the current schema version
+- **THEN** migration runs without duplicating schema objects or data
+
+### Requirement: Scan run tracking
+The database SHALL contain a `scan_runs` table with project, start time, completion time, status, error, files seen, and notes seen. A project scan SHALL only be considered fresh when its latest run has status `completed`.
+
+#### Scenario: Completed scan recorded
+- **WHEN** a project scan finishes successfully
+- **THEN** a `scan_runs` row is recorded with `status: completed`, `completed_at`, `files_seen`, and `notes_seen`
+
+#### Scenario: Failed scan recorded
+- **WHEN** a project scan fails before completion
+- **THEN** a `scan_runs` row is recorded with `status: failed` and an error summary
+- **AND** status output does not treat that failed run as a fresh completed scan
+
+### Requirement: Notes table schema
+The database SHALL contain a `notes` table with columns: `id` (INTEGER PRIMARY KEY), `project` (TEXT NOT NULL), `type` (TEXT NOT NULL), `section_id` (TEXT NOT NULL), `repo` (TEXT), `branch` (TEXT), `date` (TEXT), `title` (TEXT), `summary` (TEXT), `verification` (TEXT), `notes_text` (TEXT), `commit_hash` (TEXT), `ticket` (TEXT), `granola_id` (TEXT), `updated_at` (TEXT), `tags` (TEXT), `source_path` (TEXT NOT NULL), `content` (TEXT NOT NULL), `content_hash` (TEXT NOT NULL), `metadata_json` (TEXT), `seen_in_scan_id` (INTEGER), and `scanned_at` (TEXT NOT NULL). The table SHALL enforce `UNIQUE(project, source_path, section_id)`.
+
+#### Scenario: Valid note inserted
+- **WHEN** a classified logical note record is inserted with all required fields
+- **THEN** the row is stored and queryable by `project`, `type`, `source_path`, and `section_id`
+
+#### Scenario: NULL fields allowed for optional metadata
+- **WHEN** a knowledge note has no `repo` or `branch`
+- **THEN** the note is inserted with NULL for those columns without error
+
+#### Scenario: Multiple daily work sections from one file
+- **WHEN** a daily work file contains two sections with `- Repo:` fields
+- **THEN** two rows are stored with the same `project` and `source_path` and different `section_id` values
+
+#### Scenario: Multi-project Granola note
+- **WHEN** a Granola note has `folders: [VetZ, IReckonu]`
+- **THEN** two rows are stored with the same `source_path` and `section_id` but different `project` values
+
+### Requirement: FTS5 full-text index
+The system SHALL create a FTS5 virtual table `notes_fts` indexing `title`, `summary`, `content`, and `tags` columns from the `notes` table. Triggers SHALL keep the FTS5 index in sync on INSERT, UPDATE, and DELETE.
+
+#### Scenario: Inserted note is searchable via FTS5
+- **WHEN** a note with content containing "billable service update persistence" is inserted
+- **THEN** an FTS5 query for `billable service` returns that note
+
+#### Scenario: Updated note content is re-indexed
+- **WHEN** a note's content is updated with new text
+- **THEN** FTS5 queries reflect the updated content immediately
+
+#### Scenario: Deleted note is removed from FTS5
+- **WHEN** a note row is deleted from the `notes` table
+- **THEN** the corresponding FTS5 entry is removed
+
+### Requirement: Upsert behavior
+Inserting a logical note record with a `(project, source_path, section_id)` key that already exists in the database SHALL update the existing row rather than creating a duplicate. The implementation SHALL use SQLite `INSERT ... ON CONFLICT(project, source_path, section_id) DO UPDATE` semantics rather than `INSERT OR REPLACE`. The `scanned_at` timestamp and `seen_in_scan_id` SHALL be updated on every upsert.
+
+#### Scenario: Existing note updated
+- **WHEN** a note at `1.Projects/VetZ/1. Daily Work/2026/04/2026-04-24.md` with section `001-one-backend` is scanned again
+- **THEN** its row is updated with the latest metadata and content
+- **AND** its row ID remains stable
+- **AND** `scanned_at` reflects the current time
+
+#### Scenario: New note inserted
+- **WHEN** a note at a previously unseen `(project, source_path, section_id)` key is scanned
+- **THEN** a new row is inserted without affecting other notes
+
+### Requirement: Full project scan transaction and stale cleanup
+A successful full project scan SHALL apply note upserts and stale-row cleanup in a transaction. After all currently discovered records for a project are upserted with the current `scan_run` ID, rows for that project not seen in the current successful scan SHALL be deleted from `notes`.
+
+#### Scenario: Deleted vault file removed from database
+- **WHEN** a file that was present in the previous successful `VetZ` scan is deleted from the vault
+- **AND** `zettelbrief scan --project VetZ` completes successfully
+- **THEN** rows for the deleted file are removed from `notes` and `notes_fts`
+
+#### Scenario: Failed scan does not delete stale rows
+- **WHEN** `zettelbrief scan --project VetZ` fails midway through scanning
+- **THEN** the transaction is rolled back
+- **AND** existing notes from the previous successful scan remain queryable
+- **AND** the failed scan is visible in `scan_runs`
+
+### Requirement: SQLite connection behavior
+The system SHALL configure SQLite for local CLI reliability by using parameterized SQL for all user/config/vault-derived values, a busy timeout, and WAL mode where supported.
+
+#### Scenario: Concurrent command waits for lock
+- **WHEN** `status` opens the database while a scan transaction is active
+- **THEN** SQLite uses the configured busy timeout before failing with a clear database-lock error
+
+#### Scenario: SQL values parameterized
+- **WHEN** a note contains quotes, SQL metacharacters, or FTS metacharacters in title/content/tags
+- **THEN** insert/update/status SQL uses parameters and stores the content without SQL injection or syntax errors
+
+### Requirement: Structured status querying
+The system SHALL support querying structured scan state including configured project name, total note count per project, count per note type, latest completed scan timestamp per project, and latest failed scan error if any. Status formatting SHALL happen in the CLI layer, not inside the store package.
+
+#### Scenario: Status after scanning two projects
+- **WHEN** `VetZ` has been scanned with 50 notes and `Flive` has been scanned with 30 notes
+- **THEN** status query returns structured data for `VetZ: 50 notes` and `Flive: 30 notes` with their respective completed scan timestamps
+
+#### Scenario: Status with un-scanned configured project
+- **WHEN** `VetZ` has been scanned but configured project `Flive` has never been scanned
+- **THEN** status query includes `VetZ` with its count and timestamp, and indicates `Flive` as not yet scanned
+
+#### Scenario: Status with empty database
+- **WHEN** no projects have been scanned
+- **THEN** status query reports zero notes and indicates configured projects as not yet scanned
