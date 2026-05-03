@@ -60,7 +60,7 @@ Bottom-cap at 0.3 so old daily-work notes don’t disappear entirely — they ca
 
 ```json
 {
-  "source_path": "1.Projects/VetZ/1. Daily Work/2026-04-25.md",
+  "source_path": "1.Projects/Acme/1. Daily Work/2026-04-25.md",
   "section_id": "billable-update-fix",
   "classification": "daily_work",
   "confidence": "HIGH",
