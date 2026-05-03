@@ -29,10 +29,10 @@ func TestLoadGlobalMissingAndInvalidYAML(t *testing.T) {
 func TestMergeDiscoveryValidationAndSortedNames(t *testing.T) {
 	tmp := t.TempDir()
 	vault := filepath.Join(tmp, "vault")
-	if err := os.MkdirAll(filepath.Join(vault, "1.Projects", "VetZ"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(vault, "1.Projects", "Acme"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	global := &Config{VaultPath: vault, Projects: map[string]ProjectConfig{"VetZ": {Folders: []string{"1.Projects/VetZ"}}}}
+	global := &Config{VaultPath: vault, Projects: map[string]ProjectConfig{"Acme": {Folders: []string{"1.Projects/Acme"}}}}
 	project := &Config{VaultPath: "/ignored", Projects: map[string]ProjectConfig{"Flive": {Folders: []string{"1.Projects/Flive"}, Aliases: []string{"F Live"}}}}
 	if err := os.MkdirAll(filepath.Join(vault, "1.Projects", "Flive"), 0o755); err != nil {
 		t.Fatal(err)
@@ -41,7 +41,7 @@ func TestMergeDiscoveryValidationAndSortedNames(t *testing.T) {
 	if merged.VaultPath != vault || len(merged.Warnings) != 1 {
 		t.Fatalf("vault override should be ignored with warning: %#v", merged)
 	}
-	if got := merged.SortedProjectNames(); !reflect.DeepEqual(got, []string{"Flive", "VetZ"}) {
+	if got := merged.SortedProjectNames(); !reflect.DeepEqual(got, []string{"Acme", "Flive"}) {
 		t.Fatalf("sorted names = %#v", got)
 	}
 	if err := merged.ValidateForScan(""); err != nil {

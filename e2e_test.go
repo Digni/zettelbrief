@@ -20,7 +20,7 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if err := os.MkdirAll(cfgDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	cfg := "vault_path: " + vault + "\nprojects:\n  VetZ:\n    folders:\n      - 1.Projects/VetZ\n      - 1.Projects/VetZ/Backend\n    aliases: [Vetz]\n  Flive:\n    folders: []\n"
+	cfg := "vault_path: " + vault + "\nprojects:\n  Acme:\n    folders:\n      - 1.Projects/Acme\n      - 1.Projects/Acme/Backend\n    aliases: [Acme]\n  Flive:\n    folders: []\n"
 	if err := os.MkdirAll(filepath.Join(vault, "1.Projects", "Flive"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -34,15 +34,15 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("go build failed: %v\n%s", err, out)
 	}
-	out := runCLI(t, tmp, home, bin, "scan", "--project", "VetZ")
+	out := runCLI(t, tmp, home, bin, "scan", "--project", "Acme")
 	if !strings.Contains(out, "Records inserted/updated: 5") {
 		t.Fatalf("scan output = %s", out)
 	}
 	out = runCLI(t, tmp, home, bin, "status")
-	if !strings.Contains(out, "VetZ") || !strings.Contains(out, "notes: 5") || !strings.Contains(out, "Flive") || !strings.Contains(out, "not yet scanned") {
+	if !strings.Contains(out, "Acme") || !strings.Contains(out, "notes: 5") || !strings.Contains(out, "Flive") || !strings.Contains(out, "not yet scanned") {
 		t.Fatalf("status output = %s", out)
 	}
-	briefDir := strings.TrimSpace(runCLI(t, tmp, home, bin, "fetch", "--project", "VetZ", "--repo", "One.Backend", "persistence"))
+	briefDir := strings.TrimSpace(runCLI(t, tmp, home, bin, "fetch", "--project", "Acme", "--repo", "One.Backend", "persistence"))
 	if !strings.Contains(briefDir, filepath.Join(".zettelbrief", "briefs")) {
 		t.Fatalf("fetch output = %s", briefDir)
 	}
@@ -51,7 +51,7 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 		t.Fatal(err)
 	}
 	briefText := string(briefData)
-	if !strings.Contains(briefText, "## Relevant Prior Work") || !strings.Contains(briefText, "1.Projects/VetZ/Backend/architecture-overview.md") {
+	if !strings.Contains(briefText, "## Relevant Prior Work") || !strings.Contains(briefText, "1.Projects/Acme/Backend/architecture-overview.md") {
 		t.Fatalf("brief.md = %s", briefText)
 	}
 	sourcesData, err := os.ReadFile(filepath.Join(tmp, briefDir, "sources.json"))
@@ -61,15 +61,15 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if !strings.Contains(string(sourcesData), "source_path") || !strings.Contains(string(sourcesData), "row_id") {
 		t.Fatalf("sources.json = %s", sourcesData)
 	}
-	for _, args := range [][]string{{"fetch", "--project", "VetZ"}, {"fetch", "persistence"}, {"fetch", "--project", "VetZ", "--since", "bad-date", "persistence"}, {"fetch", "--project", "VetZ", "--until", "bad-date", "persistence"}, {"fetch", "--project", "VetZ", "--since", "2026-05-01", "--until", "2026-04-01", "persistence"}, {"fetch", "--project", "VetZ", "--type", "unsupported", "persistence"}} {
+	for _, args := range [][]string{{"fetch", "--project", "Acme"}, {"fetch", "persistence"}, {"fetch", "--project", "Acme", "--since", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--until", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--since", "2026-05-01", "--until", "2026-04-01", "persistence"}, {"fetch", "--project", "Acme", "--type", "unsupported", "persistence"}} {
 		if out, err := runCLIErr(t, tmp, home, bin, args...); err == nil || strings.Contains(out, "Usage:") {
 			t.Fatalf("expected clear failure without usage for %v: err=%v out=%s", args, err, out)
 		}
 	}
-	if err := os.Remove(filepath.Join(vault, "1.Projects", "VetZ", "Backend", "architecture-overview.md")); err != nil {
+	if err := os.Remove(filepath.Join(vault, "1.Projects", "Acme", "Backend", "architecture-overview.md")); err != nil {
 		t.Fatal(err)
 	}
-	out = runCLI(t, tmp, home, bin, "scan", "--project", "VetZ")
+	out = runCLI(t, tmp, home, bin, "scan", "--project", "Acme")
 	if !strings.Contains(out, "Stale records removed: 1") {
 		t.Fatalf("stale output = %s", out)
 	}

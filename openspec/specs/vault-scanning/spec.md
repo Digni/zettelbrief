@@ -23,7 +23,7 @@ The system SHALL discover all Markdown (`.md`) files within configured project f
 - **THEN** the system completes the scan with zero notes discovered and prints a warning
 
 #### Scenario: Overlapping project folders
-- **WHEN** project `VetZ` is configured with both `1.Projects/VetZ` and `1.Projects/VetZ/Backend`
+- **WHEN** project `Acme` is configured with both `1.Projects/Acme` and `1.Projects/Acme/Backend`
 - **THEN** a file under `Backend` is parsed and counted once for that project scan
 
 #### Scenario: Symlink escapes vault
@@ -49,19 +49,19 @@ The system SHALL read Markdown files as UTF-8 text with a configurable/default m
 The system SHALL scan `4.Granola/` for Markdown files whose normalized frontmatter `folders:` field matches a configured project name or alias. Granola notes with `folders:` that match no configured project SHALL be skipped for that project scan.
 
 #### Scenario: Granola note matches scanned project
-- **WHEN** scanning project `VetZ` and a Granola note at `4.Granola/2026-04/16/Daily Vetz-2026-04-16.md` has `folders: [VetZ]`
-- **THEN** the note is discovered and processed as a meeting note for `VetZ`
+- **WHEN** scanning project `Acme` and a Granola note at `4.Granola/2026-04/16/Daily Acme-2026-04-16.md` has `folders: [Acme]`
+- **THEN** the note is discovered and processed as a meeting note for `Acme`
 
 #### Scenario: Granola note matches scanned project alias
-- **WHEN** scanning project `VetZ`, config has alias `Vetz`, and a Granola note has `folders: [Vetz]`
-- **THEN** the note is discovered and processed as a meeting note for canonical project `VetZ`
+- **WHEN** scanning project `Acme`, config has alias `Acme`, and a Granola note has `folders: [Acme]`
+- **THEN** the note is discovered and processed as a meeting note for canonical project `Acme`
 
 #### Scenario: Granola note matches multiple configured projects
-- **WHEN** scanning all projects and a Granola note has `folders: [VetZ, IReckonu]`
-- **THEN** the note is processed once for `VetZ` and once for `IReckonu`
+- **WHEN** scanning all projects and a Granola note has `folders: [Acme, IReckonu]`
+- **THEN** the note is processed once for `Acme` and once for `IReckonu`
 
 #### Scenario: Granola note does not match scanned project
-- **WHEN** scanning project `VetZ` and a Granola note has `folders: [Flive]`
+- **WHEN** scanning project `Acme` and a Granola note has `folders: [Flive]`
 - **THEN** the note is skipped for this scan
 
 #### Scenario: Granola note has no folders field
@@ -69,15 +69,15 @@ The system SHALL scan `4.Granola/` for Markdown files whose normalized frontmatt
 - **THEN** the note is logged as a warning and skipped (cannot determine project association)
 
 #### Scenario: Granola folder name does not match config or aliases
-- **WHEN** a Granola note has `folders: [Vetz]` but no configured project name or alias matches it
+- **WHEN** a Granola note has `folders: [Acme]` but no configured project name or alias matches it
 - **THEN** the note is logged as a warning with the unmatched folder name and skipped
 
 ### Requirement: Scan command accepts project or all flag
 The `scan` subcommand SHALL require either `--project <name>` or `--all`. The `--all` flag SHALL scan every configured project sequentially in sorted project-name order.
 
 #### Scenario: Scan a specific project
-- **WHEN** `zettelbrief scan --project VetZ` is run
-- **THEN** only notes belonging to project `VetZ` are processed
+- **WHEN** `zettelbrief scan --project Acme` is run
+- **THEN** only notes belonging to project `Acme` are processed
 
 #### Scenario: Scan all projects
 - **WHEN** `zettelbrief scan --all` is run

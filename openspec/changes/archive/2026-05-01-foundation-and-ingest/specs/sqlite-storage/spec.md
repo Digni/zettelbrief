@@ -4,13 +4,13 @@
 The system SHALL create and manage a SQLite database at `.zettelbrief/zettelbrief.db` relative to the repository root or current working directory used for the project. The `.zettelbrief/` directory SHALL be created if it does not exist. The runtime directory and database file SHALL use restrictive local permissions where supported because the database contains copied private note content.
 
 #### Scenario: First scan creates database
-- **WHEN** `zettelbrief scan --project VetZ` is run for the first time
+- **WHEN** `zettelbrief scan --project Acme` is run for the first time
 - **THEN** `.zettelbrief/zettelbrief.db` is created with the full schema
 - **AND** `.zettelbrief/` is created with mode `0700` where supported
 - **AND** the database file is created with mode `0600` where supported
 
 #### Scenario: Subsequent scans reuse existing database
-- **WHEN** `zettelbrief scan --project VetZ` is run and `.zettelbrief/zettelbrief.db` already exists
+- **WHEN** `zettelbrief scan --project Acme` is run and `.zettelbrief/zettelbrief.db` already exists
 - **THEN** the existing database is opened and used without re-creating the schema
 
 ### Requirement: Schema migration tracking
@@ -53,7 +53,7 @@ The database SHALL contain a `notes` table with columns: `id` (INTEGER PRIMARY K
 - **THEN** two rows are stored with the same `project` and `source_path` and different `section_id` values
 
 #### Scenario: Multi-project Granola note
-- **WHEN** a Granola note has `folders: [VetZ, IReckonu]`
+- **WHEN** a Granola note has `folders: [Acme, IReckonu]`
 - **THEN** two rows are stored with the same `source_path` and `section_id` but different `project` values
 
 ### Requirement: FTS5 full-text index
@@ -75,7 +75,7 @@ The system SHALL create a FTS5 virtual table `notes_fts` indexing `title`, `summ
 Inserting a logical note record with a `(project, source_path, section_id)` key that already exists in the database SHALL update the existing row rather than creating a duplicate. The implementation SHALL use SQLite `INSERT ... ON CONFLICT(project, source_path, section_id) DO UPDATE` semantics rather than `INSERT OR REPLACE`. The `scanned_at` timestamp and `seen_in_scan_id` SHALL be updated on every upsert.
 
 #### Scenario: Existing note updated
-- **WHEN** a note at `1.Projects/VetZ/1. Daily Work/2026/04/2026-04-24.md` with section `001-one-backend` is scanned again
+- **WHEN** a note at `1.Projects/Acme/1. Daily Work/2026/04/2026-04-24.md` with section `001-one-backend` is scanned again
 - **THEN** its row is updated with the latest metadata and content
 - **AND** its row ID remains stable
 - **AND** `scanned_at` reflects the current time
@@ -88,12 +88,12 @@ Inserting a logical note record with a `(project, source_path, section_id)` key 
 A successful full project scan SHALL apply note upserts and stale-row cleanup in a transaction. After all currently discovered records for a project are upserted with the current `scan_run` ID, rows for that project not seen in the current successful scan SHALL be deleted from `notes`.
 
 #### Scenario: Deleted vault file removed from database
-- **WHEN** a file that was present in the previous successful `VetZ` scan is deleted from the vault
-- **AND** `zettelbrief scan --project VetZ` completes successfully
+- **WHEN** a file that was present in the previous successful `Acme` scan is deleted from the vault
+- **AND** `zettelbrief scan --project Acme` completes successfully
 - **THEN** rows for the deleted file are removed from `notes` and `notes_fts`
 
 #### Scenario: Failed scan does not delete stale rows
-- **WHEN** `zettelbrief scan --project VetZ` fails midway through scanning
+- **WHEN** `zettelbrief scan --project Acme` fails midway through scanning
 - **THEN** the transaction is rolled back
 - **AND** existing notes from the previous successful scan remain queryable
 - **AND** the failed scan is visible in `scan_runs`
@@ -113,12 +113,12 @@ The system SHALL configure SQLite for local CLI reliability by using parameteriz
 The system SHALL support querying structured scan state including configured project name, total note count per project, count per note type, latest completed scan timestamp per project, and latest failed scan error if any. Status formatting SHALL happen in the CLI layer, not inside the store package.
 
 #### Scenario: Status after scanning two projects
-- **WHEN** `VetZ` has been scanned with 50 notes and `Flive` has been scanned with 30 notes
-- **THEN** status query returns structured data for `VetZ: 50 notes` and `Flive: 30 notes` with their respective completed scan timestamps
+- **WHEN** `Acme` has been scanned with 50 notes and `Flive` has been scanned with 30 notes
+- **THEN** status query returns structured data for `Acme: 50 notes` and `Flive: 30 notes` with their respective completed scan timestamps
 
 #### Scenario: Status with un-scanned configured project
-- **WHEN** `VetZ` has been scanned but configured project `Flive` has never been scanned
-- **THEN** status query includes `VetZ` with its count and timestamp, and indicates `Flive` as not yet scanned
+- **WHEN** `Acme` has been scanned but configured project `Flive` has never been scanned
+- **THEN** status query includes `Acme` with its count and timestamp, and indicates `Flive` as not yet scanned
 
 #### Scenario: Status with empty database
 - **WHEN** no projects have been scanned

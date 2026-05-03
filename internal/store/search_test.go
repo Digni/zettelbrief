@@ -10,8 +10,8 @@ import (
 
 func TestSearchNotesSafeInputAndCitationFields(t *testing.T) {
 	db := searchTestDB(t)
-	insertSearchNote(t, db, models.Note{Project: "VetZ", Type: models.NoteTypeKnowledge, SourcePath: "knowledge.md", SectionID: "", Title: models.NullString("Billable"), Summary: models.NullString("service update"), Content: "billable service update persistence", ContentHash: "h", Tags: []string{"backend"}})
-	results, tokens, err := db.SearchNotes(SearchRequest{Project: "VetZ", Query: `"billable" service:update - persistence`})
+	insertSearchNote(t, db, models.Note{Project: "Acme", Type: models.NoteTypeKnowledge, SourcePath: "knowledge.md", SectionID: "", Title: models.NullString("Billable"), Summary: models.NullString("service update"), Content: "billable service update persistence", ContentHash: "h", Tags: []string{"backend"}})
+	results, tokens, err := db.SearchNotes(SearchRequest{Project: "Acme", Query: `"billable" service:update - persistence`})
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
@@ -29,7 +29,7 @@ func TestSearchNotesSafeInputAndCitationFields(t *testing.T) {
 
 func TestSearchNotesRejectsEmptyQueryAndProject(t *testing.T) {
 	db := searchTestDB(t)
-	if _, _, err := db.SearchNotes(SearchRequest{Project: "VetZ", Query: `:"" ---`}); !errors.Is(err, ErrInvalidSearch) {
+	if _, _, err := db.SearchNotes(SearchRequest{Project: "Acme", Query: `:"" ---`}); !errors.Is(err, ErrInvalidSearch) {
 		t.Fatalf("empty query err = %v", err)
 	}
 	if _, _, err := db.SearchNotes(SearchRequest{Query: "persistence"}); !errors.Is(err, ErrInvalidSearch) {
@@ -39,15 +39,15 @@ func TestSearchNotesRejectsEmptyQueryAndProject(t *testing.T) {
 
 func TestSearchNotesMetadataFilters(t *testing.T) {
 	db := searchTestDB(t)
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeDailyWork, "backend-old.md", "One.Backend", "2026-04-01"))
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeDailyWork, "backend-edge.md", "One.Backend", "2026-04-30"))
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeKnowledge, "backend-wrong-type.md", "One.Backend", "2026-04-15"))
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeDailyWork, "backend-too-late.md", "One.Backend", "2026-05-01"))
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeDailyWork, "frontend.md", "One.Frontend", "2026-04-15"))
-	insertSearchNote(t, db, noteForFilters("VetZ", models.NoteTypeKnowledge, "project.md", "", ""))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeDailyWork, "backend-old.md", "One.Backend", "2026-04-01"))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeDailyWork, "backend-edge.md", "One.Backend", "2026-04-30"))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeKnowledge, "backend-wrong-type.md", "One.Backend", "2026-04-15"))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeDailyWork, "backend-too-late.md", "One.Backend", "2026-05-01"))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeDailyWork, "frontend.md", "One.Frontend", "2026-04-15"))
+	insertSearchNote(t, db, noteForFilters("Acme", models.NoteTypeKnowledge, "project.md", "", ""))
 	insertSearchNote(t, db, noteForFilters("Flive", models.NoteTypeDailyWork, "other.md", "One.Backend", "2026-04-15"))
 
-	results, _, err := db.SearchNotes(SearchRequest{Project: "VetZ", Repo: "One.Backend", Type: models.NoteTypeDailyWork, Since: "2026-04-01", Until: "2026-04-30", Query: "persistence"})
+	results, _, err := db.SearchNotes(SearchRequest{Project: "Acme", Repo: "One.Backend", Type: models.NoteTypeDailyWork, Since: "2026-04-01", Until: "2026-04-30", Query: "persistence"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -55,12 +55,12 @@ func TestSearchNotesMetadataFilters(t *testing.T) {
 		t.Fatalf("combined results = %#v", results)
 	}
 	for _, result := range results {
-		if result.Project != "VetZ" || result.Type != models.NoteTypeDailyWork || !result.Repo.Valid || result.Repo.String != "One.Backend" || !result.Date.Valid {
+		if result.Project != "Acme" || result.Type != models.NoteTypeDailyWork || !result.Repo.Valid || result.Repo.String != "One.Backend" || !result.Date.Valid {
 			t.Fatalf("unexpected filtered result: %#v", result)
 		}
 	}
 
-	results, _, err = db.SearchNotes(SearchRequest{Project: "VetZ", Repo: "One.Backend", Query: "persistence"})
+	results, _, err = db.SearchNotes(SearchRequest{Project: "Acme", Repo: "One.Backend", Query: "persistence"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +77,7 @@ func TestSearchNotesMetadataFilters(t *testing.T) {
 		t.Fatalf("expected project-level row in %#v", results)
 	}
 
-	results, _, err = db.SearchNotes(SearchRequest{Project: "VetZ", Since: "2026-04-01", Query: "persistence"})
+	results, _, err = db.SearchNotes(SearchRequest{Project: "Acme", Since: "2026-04-01", Query: "persistence"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,8 +90,8 @@ func TestSearchNotesMetadataFilters(t *testing.T) {
 
 func TestSearchNotesIncludesNotesText(t *testing.T) {
 	db := searchTestDB(t)
-	insertSearchNote(t, db, models.Note{Project: "VetZ", Type: models.NoteTypeDailyWork, SourcePath: "notes.md", SectionID: "001", Repo: models.NullString("One.Backend"), Title: models.NullString("One.Backend"), NotesText: models.NullString("follow-up persistence checks"), Content: "no query term here", ContentHash: "n"})
-	results, _, err := db.SearchNotes(SearchRequest{Project: "VetZ", Query: "persistence"})
+	insertSearchNote(t, db, models.Note{Project: "Acme", Type: models.NoteTypeDailyWork, SourcePath: "notes.md", SectionID: "001", Repo: models.NullString("One.Backend"), Title: models.NullString("One.Backend"), NotesText: models.NullString("follow-up persistence checks"), Content: "no query term here", ContentHash: "n"})
+	results, _, err := db.SearchNotes(SearchRequest{Project: "Acme", Query: "persistence"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,9 +102,9 @@ func TestSearchNotesIncludesNotesText(t *testing.T) {
 
 func TestSearchNotesDailyWorkIsSectionSpecific(t *testing.T) {
 	db := searchTestDB(t)
-	insertSearchNote(t, db, models.Note{Project: "VetZ", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "001-one-backend", Repo: models.NullString("One.Backend"), Title: models.NullString("One.Backend"), Summary: models.NullString("API cleanup"), Content: "repo one backend api cleanup", ContentHash: "a"})
-	insertSearchNote(t, db, models.Note{Project: "VetZ", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "002-one-frontend", Repo: models.NullString("One.Frontend"), Title: models.NullString("One.Frontend"), Summary: models.NullString("billable persistence UI"), Content: "billable persistence UI", ContentHash: "b"})
-	results, _, err := db.SearchNotes(SearchRequest{Project: "VetZ", Query: "billable persistence"})
+	insertSearchNote(t, db, models.Note{Project: "Acme", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "001-one-backend", Repo: models.NullString("One.Backend"), Title: models.NullString("One.Backend"), Summary: models.NullString("API cleanup"), Content: "repo one backend api cleanup", ContentHash: "a"})
+	insertSearchNote(t, db, models.Note{Project: "Acme", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "002-one-frontend", Repo: models.NullString("One.Frontend"), Title: models.NullString("One.Frontend"), Summary: models.NullString("billable persistence UI"), Content: "billable persistence UI", ContentHash: "b"})
+	results, _, err := db.SearchNotes(SearchRequest{Project: "Acme", Query: "billable persistence"})
 	if err != nil {
 		t.Fatal(err)
 	}

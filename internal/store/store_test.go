@@ -20,19 +20,19 @@ func TestMigrationsUpsertStaleStatusAndFTS(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	runID, err := db.StartScanRunTx(tx, "VetZ")
+	runID, err := db.StartScanRunTx(tx, "Acme")
 	if err != nil {
 		t.Fatal(err)
 	}
-	note := models.Note{Project: "VetZ", Type: models.NoteTypeKnowledge, SourcePath: "a.md", Content: "billable service update persistence", ContentHash: "h", Title: models.NullString("A"), SectionID: ""}
+	note := models.Note{Project: "Acme", Type: models.NoteTypeKnowledge, SourcePath: "a.md", Content: "billable service update persistence", ContentHash: "h", Title: models.NullString("A"), SectionID: ""}
 	if err := db.UpsertNoteTx(tx, note, runID); err != nil {
 		t.Fatal(err)
 	}
-	daily := models.Note{Project: "VetZ", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "001-one", Repo: models.NullString("One"), Content: "daily", ContentHash: "d"}
+	daily := models.Note{Project: "Acme", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "001-one", Repo: models.NullString("One"), Content: "daily", ContentHash: "d"}
 	if err := db.UpsertNoteTx(tx, daily, runID); err != nil {
 		t.Fatal(err)
 	}
-	meetingA := models.Note{Project: "VetZ", Type: models.NoteTypeMeeting, SourcePath: "g.md", SectionID: "", GranolaID: models.NullString("g"), Content: "meeting", ContentHash: "g"}
+	meetingA := models.Note{Project: "Acme", Type: models.NoteTypeMeeting, SourcePath: "g.md", SectionID: "", GranolaID: models.NullString("g"), Content: "meeting", ContentHash: "g"}
 	meetingB := meetingA
 	meetingB.Project = "IReckonu"
 	if err := db.UpsertNoteTx(tx, meetingA, runID); err != nil {
@@ -47,17 +47,17 @@ func TestMigrationsUpsertStaleStatusAndFTS(t *testing.T) {
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	rowID, err := db.NoteRowID("VetZ", "a.md", "")
+	rowID, err := db.NoteRowID("Acme", "a.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
 	tx, _ = db.Begin()
-	run2, _ := db.StartScanRunTx(tx, "VetZ")
+	run2, _ := db.StartScanRunTx(tx, "Acme")
 	note.Content = "updated content"
 	if err := db.UpsertNoteTx(tx, note, run2); err != nil {
 		t.Fatal(err)
 	}
-	removed, err := db.DeleteStaleNotesTx(tx, "VetZ", run2)
+	removed, err := db.DeleteStaleNotesTx(tx, "Acme", run2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -70,7 +70,7 @@ func TestMigrationsUpsertStaleStatusAndFTS(t *testing.T) {
 	if err := tx.Commit(); err != nil {
 		t.Fatal(err)
 	}
-	rowID2, err := db.NoteRowID("VetZ", "a.md", "")
+	rowID2, err := db.NoteRowID("Acme", "a.md", "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -84,10 +84,10 @@ func TestMigrationsUpsertStaleStatusAndFTS(t *testing.T) {
 	if ftsCount != 1 {
 		t.Fatalf("fts count=%d", ftsCount)
 	}
-	if err := db.RecordFailedScan("VetZ", sql.ErrConnDone, 0, 0); err != nil {
+	if err := db.RecordFailedScan("Acme", sql.ErrConnDone, 0, 0); err != nil {
 		t.Fatal(err)
 	}
-	statuses, err := db.Status([]string{"Flive", "VetZ"})
+	statuses, err := db.Status([]string{"Flive", "Acme"})
 	if err != nil {
 		t.Fatal(err)
 	}

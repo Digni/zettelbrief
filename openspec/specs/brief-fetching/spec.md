@@ -7,14 +7,14 @@ TBD - created by archiving change search-brief-generation. Update Purpose after 
 The system SHALL provide a `fetch` CLI command that accepts one required query argument and metadata filters for project, repo, note type, and fetch-only date range. A successful fetch SHALL write a UTC timestamped output directory containing `brief.md` and `sources.json` under `.zettelbrief/briefs/`. Date range flags on `scan` are out of scope for this change.
 
 #### Scenario: Fetch writes brief and sources files
-- **WHEN** `zettelbrief fetch --project VetZ --repo One.Backend "billable service persistence"` is run after VetZ has been scanned
+- **WHEN** `zettelbrief fetch --project Acme --repo One.Backend "billable service persistence"` is run after Acme has been scanned
 - **THEN** the system creates `.zettelbrief/briefs/<utc-timestamp>/brief.md` where `<utc-timestamp>` uses `YYYY-MM-DDTHH-mm-ssZ`
 - **AND** the system creates `.zettelbrief/briefs/<utc-timestamp>/sources.json`
 - **AND** `sources.json` includes a RFC3339 UTC `generated_at` value
 - **AND** the command output includes the created brief directory path
 
 #### Scenario: Fetch requires a query
-- **WHEN** `zettelbrief fetch --project VetZ` is run without a query argument
+- **WHEN** `zettelbrief fetch --project Acme` is run without a query argument
 - **THEN** the command fails with a clear validation error
 - **AND** no brief directory is created
 
@@ -24,7 +24,7 @@ The system SHALL provide a `fetch` CLI command that accepts one required query a
 - **AND** no brief directory is created
 
 #### Scenario: Fetch validates note type filter
-- **WHEN** `zettelbrief fetch --project VetZ --type unsupported "billable service persistence"` is run
+- **WHEN** `zettelbrief fetch --project Acme --type unsupported "billable service persistence"` is run
 - **THEN** the command fails with a clear validation error listing supported note types
 - **AND** no brief directory is created
 
@@ -32,49 +32,49 @@ The system SHALL provide a `fetch` CLI command that accepts one required query a
 The system SHALL filter fetched notes by project, optional repo, optional note type, and optional inclusive fetch date range before composing the brief. The repo filter SHALL exclude notes with a different non-empty repo value, while allowing project-level notes with no repo value to remain eligible.
 
 #### Scenario: Project filter limits results
-- **WHEN** VetZ and Flive notes both contain the query terms
-- **AND** `zettelbrief fetch --project VetZ "shared query"` is run
-- **THEN** generated brief entries only cite VetZ notes
+- **WHEN** Acme and Flive notes both contain the query terms
+- **AND** `zettelbrief fetch --project Acme "shared query"` is run
+- **THEN** generated brief entries only cite Acme notes
 
 #### Scenario: Repo filter excludes other repo-specific notes but keeps project context
 - **WHEN** scanned notes include daily work for repos `One.Backend` and `One.Frontend`
 - **AND** matching knowledge, meeting, or project state notes have no repo value
-- **AND** `zettelbrief fetch --project VetZ --repo One.Backend "persistence"` is run
+- **AND** `zettelbrief fetch --project Acme --repo One.Backend "persistence"` is run
 - **THEN** generated entries do not cite `One.Frontend` rows
 - **AND** generated entries may cite matching `One.Backend` rows
 - **AND** generated entries may cite matching project-level rows with no repo value
 
 #### Scenario: Repo filter requires daily-work prior-work match
-- **WHEN** `zettelbrief fetch --project VetZ --repo One.Backend "persistence"` is run
+- **WHEN** `zettelbrief fetch --project Acme --repo One.Backend "persistence"` is run
 - **THEN** `daily_work` entries under `Relevant Prior Work` cite only rows whose repo is `One.Backend`
 
 #### Scenario: No repo filter allows matching daily work
-- **WHEN** `zettelbrief fetch --project VetZ "persistence"` is run without `--repo`
+- **WHEN** `zettelbrief fetch --project Acme "persistence"` is run without `--repo`
 - **THEN** matching `daily_work` entries may appear under `Relevant Prior Work` regardless of repo value
 
 #### Scenario: Type filter limits note types
 - **WHEN** matching notes exist for `daily_work` and `meeting`
-- **AND** `zettelbrief fetch --project VetZ --type meeting "planning"` is run
+- **AND** `zettelbrief fetch --project Acme --type meeting "planning"` is run
 - **THEN** generated brief entries only cite meeting notes
 
 #### Scenario: Date range filter is inclusive
 - **WHEN** matching notes have dates `2026-04-01`, `2026-04-15`, and `2026-05-01`
-- **AND** `zettelbrief fetch --project VetZ --since 2026-04-01 --until 2026-04-15 "planning"` is run
+- **AND** `zettelbrief fetch --project Acme --since 2026-04-01 --until 2026-04-15 "planning"` is run
 - **THEN** generated brief entries SHALL cite eligible matching notes dated `2026-04-01` and `2026-04-15`
 - **AND** generated brief entries SHALL NOT cite the `2026-05-01` note
 
 #### Scenario: Date filter excludes undated notes
 - **WHEN** a matching note has no date value
-- **AND** `zettelbrief fetch --project VetZ --since 2026-04-01 "planning"` is run
+- **AND** `zettelbrief fetch --project Acme --since 2026-04-01 "planning"` is run
 - **THEN** the undated note is not eligible for generated brief entries
 
 #### Scenario: Invalid until date is rejected
-- **WHEN** `zettelbrief fetch --project VetZ --until not-a-date "planning"` is run
+- **WHEN** `zettelbrief fetch --project Acme --until not-a-date "planning"` is run
 - **THEN** the command fails with a clear date validation error
 - **AND** no brief directory is created
 
 #### Scenario: Reversed date range is rejected
-- **WHEN** `zettelbrief fetch --project VetZ --since 2026-05-01 --until 2026-04-01 "planning"` is run
+- **WHEN** `zettelbrief fetch --project Acme --since 2026-05-01 --until 2026-04-01 "planning"` is run
 - **THEN** the command fails with a clear date range validation error
 - **AND** no brief directory is created
 
@@ -158,18 +158,18 @@ The system SHALL create brief output directories and files with restrictive loca
 The system SHALL handle empty search results, missing database files, nullable note metadata, and invalid dates with clear behavior and without panics.
 
 #### Scenario: No matching notes
-- **WHEN** `zettelbrief fetch --project VetZ "query with no matches"` finds no notes
+- **WHEN** `zettelbrief fetch --project Acme "query with no matches"` finds no notes
 - **THEN** the command still writes `brief.md` and `sources.json`
 - **AND** `brief.md` states that no matching sources were found in each content section
 - **AND** `sources.json` contains an empty entry mapping
 
 #### Scenario: Database has not been created
-- **WHEN** `zettelbrief fetch --project VetZ "planning"` is run before any scan has created `.zettelbrief/zettelbrief.db`
-- **THEN** the command fails with a clear message instructing the user to run `zettelbrief scan --project VetZ`
+- **WHEN** `zettelbrief fetch --project Acme "planning"` is run before any scan has created `.zettelbrief/zettelbrief.db`
+- **THEN** the command fails with a clear message instructing the user to run `zettelbrief scan --project Acme`
 - **AND** no brief directory is created
 
 #### Scenario: Invalid since date is rejected
-- **WHEN** `zettelbrief fetch --project VetZ --since not-a-date "planning"` is run
+- **WHEN** `zettelbrief fetch --project Acme --since not-a-date "planning"` is run
 - **THEN** the command fails with a clear date validation error
 - **AND** no brief directory is created
 
