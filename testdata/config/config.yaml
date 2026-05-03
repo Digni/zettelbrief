@@ -1,11 +1,11 @@
 vault_path: ../vault
 projects:
-  VetZ:
+  Acme:
     folders:
-      - 1.Projects/VetZ
-      - 1.Projects/VetZ/Backend
+      - 1.Projects/Acme
+      - 1.Projects/Acme/Backend
     aliases:
-      - Vetz
+      - Acme
   IReckonu:
     folders:
       - 1.Projects/IReckonu

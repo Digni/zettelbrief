@@ -37,16 +37,16 @@ The system SHALL discover the nearest `.zettelbrief/config.yaml` by walking upwa
 Each configured project SHALL have a name and one or more vault-relative folder paths. A project MAY define aliases used only for matching external folder names such as Granola `folders:` frontmatter. The system SHALL use project folder mappings to discover notes belonging to a project.
 
 #### Scenario: Project with single folder
-- **WHEN** a project `VetZ` is configured with `folders: ["1.Projects/VetZ"]`
-- **THEN** scanning that project walks `{vault_path}/1.Projects/VetZ` and all subdirectories
+- **WHEN** a project `Acme` is configured with `folders: ["1.Projects/Acme"]`
+- **THEN** scanning that project walks `{vault_path}/1.Projects/Acme` and all subdirectories
 
 #### Scenario: Project with multiple folders
-- **WHEN** a project `VetZ` is configured with `folders: ["1.Projects/VetZ", "1.Projects/VetZ/Backend"]`
+- **WHEN** a project `Acme` is configured with `folders: ["1.Projects/Acme", "1.Projects/Acme/Backend"]`
 - **THEN** scanning that project walks both paths and deduplicates discovered files by canonical vault-relative path before extraction/storage
 
 #### Scenario: Project with aliases
-- **WHEN** a project `VetZ` is configured with `aliases: ["Vetz"]`
-- **THEN** Granola frontmatter `folders: [Vetz]` is matched to canonical project `VetZ`
+- **WHEN** a project `Acme` is configured with `aliases: ["Acme"]`
+- **THEN** Granola frontmatter `folders: [Acme]` is matched to canonical project `Acme`
 
 #### Scenario: Unknown project requested
 - **WHEN** `zettelbrief scan --project UnknownProject` is run

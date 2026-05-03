@@ -15,7 +15,7 @@ import (
 func TestRunFetchWritesOutputs(t *testing.T) {
 	cfg, dbPath := scanFetchFixture(t)
 	outRoot := filepath.Join(t.TempDir(), "briefs")
-	summary, err := RunFetch(cfg, FetchOptions{Project: "VetZ", Repo: "One.Backend", Query: "persistence", DBPath: dbPath, OutputRoot: outRoot, Now: fixedFetchTime})
+	summary, err := RunFetch(cfg, FetchOptions{Project: "Acme", Repo: "One.Backend", Query: "persistence", DBPath: dbPath, OutputRoot: outRoot, Now: fixedFetchTime})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -27,7 +27,7 @@ func TestRunFetchWritesOutputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	briefText := string(briefData)
-	if !strings.Contains(briefText, "## Relevant Prior Work") || !strings.Contains(briefText, "1.Projects/VetZ/Backend/architecture-overview.md") {
+	if !strings.Contains(briefText, "## Relevant Prior Work") || !strings.Contains(briefText, "1.Projects/Acme/Backend/architecture-overview.md") {
 		t.Fatalf("brief.md = %s", briefText)
 	}
 	sourcesData, err := os.ReadFile(filepath.Join(summary.OutputDir, "sources.json"))
@@ -52,14 +52,14 @@ func TestRunFetchWritesOutputs(t *testing.T) {
 	assertMode(t, summary.OutputDir, 0o700)
 	assertMode(t, filepath.Join(summary.OutputDir, "brief.md"), 0o600)
 	assertMode(t, filepath.Join(summary.OutputDir, "sources.json"), 0o600)
-	if _, err := RunFetch(cfg, FetchOptions{Project: "VetZ", Query: "persistence", DBPath: dbPath, OutputRoot: outRoot, Now: fixedFetchTime}); err == nil {
+	if _, err := RunFetch(cfg, FetchOptions{Project: "Acme", Query: "persistence", DBPath: dbPath, OutputRoot: outRoot, Now: fixedFetchTime}); err == nil {
 		t.Fatalf("expected same-timestamp output collision to fail instead of overwriting")
 	}
 }
 
 func TestRunFetchNoMatchesStillWritesEmptyOutputs(t *testing.T) {
 	cfg, dbPath := scanFetchFixture(t)
-	summary, err := RunFetch(cfg, FetchOptions{Project: "VetZ", Query: "zzznomatch", DBPath: dbPath, OutputRoot: filepath.Join(t.TempDir(), "briefs"), Now: fixedFetchTime})
+	summary, err := RunFetch(cfg, FetchOptions{Project: "Acme", Query: "zzznomatch", DBPath: dbPath, OutputRoot: filepath.Join(t.TempDir(), "briefs"), Now: fixedFetchTime})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,12 +89,12 @@ func TestRunFetchValidationAndMissingDatabaseDoNotCreateOutput(t *testing.T) {
 	cfg := fetchConfig()
 	outRoot := filepath.Join(t.TempDir(), "briefs")
 	cases := []FetchOptions{
-		{Project: "VetZ", Query: "persistence", Type: "unsupported", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
-		{Project: "VetZ", Query: "persistence", Since: "not-a-date", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
-		{Project: "VetZ", Query: "persistence", Since: "2026-05-01", Until: "2026-04-01", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
-		{Project: "VetZ", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", Query: "persistence", Type: "unsupported", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", Query: "persistence", Since: "not-a-date", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", Query: "persistence", Since: "2026-05-01", Until: "2026-04-01", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 		{Query: "persistence", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
-		{Project: "VetZ", Query: "persistence", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", Query: "persistence", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 	}
 	for _, opts := range cases {
 		if _, err := RunFetch(cfg, opts); err == nil {
@@ -115,14 +115,14 @@ func scanFetchFixture(t *testing.T) (config.Config, string) {
 		t.Fatal(err)
 	}
 	defer db.Close()
-	if _, err := RunProjectScan("VetZ", cfg, db); err != nil {
+	if _, err := RunProjectScan("Acme", cfg, db); err != nil {
 		t.Fatal(err)
 	}
 	return cfg, dbPath
 }
 
 func fetchConfig() config.Config {
-	return config.Config{VaultPath: filepath.Join("..", "..", "testdata", "vault"), Projects: map[string]config.ProjectConfig{"VetZ": {Folders: []string{"1.Projects/VetZ", "1.Projects/VetZ/Backend"}, Aliases: []string{"Vetz"}}}}
+	return config.Config{VaultPath: filepath.Join("..", "..", "testdata", "vault"), Projects: map[string]config.ProjectConfig{"Acme": {Folders: []string{"1.Projects/Acme", "1.Projects/Acme/Backend"}, Aliases: []string{"Acme"}}}}
 }
 
 func fixedFetchTime() time.Time {

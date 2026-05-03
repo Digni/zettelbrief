@@ -86,8 +86,8 @@
 
 - [x] 10.1 Create a test fixture vault in `testdata/vault/` with representative notes: daily work with multiple repo sections, Granola meeting with multiple folders, knowledge note, state doc, malformed frontmatter, oversized/unreadable fixture where feasible
 - [x] 10.2 Create test config fixture in `testdata/config/` including project aliases and overlapping folders
-- [x] 10.3 End-to-end test: `go run cmd/zettelbrief/main.go scan --project VetZ` using fixture vault → verify DB has correct note counts, logical section rows, type counts, and scan run status
+- [x] 10.3 End-to-end test: `go run cmd/zettelbrief/main.go scan --project Acme` using fixture vault → verify DB has correct note counts, logical section rows, type counts, and scan run status
 - [x] 10.4 End-to-end test: re-run scan after deleting/renaming fixture note → verify stale DB rows are removed
 - [x] 10.5 End-to-end test: `go run cmd/zettelbrief/main.go status` → verify configured-but-unscanned projects appear as not yet scanned
 - [x] 10.6 Verify `go vet ./...` and `go test ./...` pass with coverage across all packages
-- [x] 10.7 Verify the real vault can be scanned: `zettelbrief scan --project VetZ` against actual vault (manual verification)
+- [x] 10.7 Verify the real vault can be scanned: `zettelbrief scan --project Acme` against actual vault (manual verification)

@@ -62,12 +62,12 @@ zettelbrief/
 # ~/.config/zettelbrief/config.yaml (global)
 vault_path: "/Users/.../Obsidian/Documents/Default"
 projects:
-  VetZ:
+  Acme:
     folders:
-      - "1.Projects/VetZ"
-      - "1.Projects/VetZ/Backend"
+      - "1.Projects/Acme"
+      - "1.Projects/Acme/Backend"
     aliases:
-      - "Vetz"          # optional Granola folder-name aliases
+      - "Acme"          # optional Granola folder-name aliases
   Flive:
     folders:
       - "1.Projects/Flive"

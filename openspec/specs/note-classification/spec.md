@@ -7,8 +7,8 @@ TBD - created by archiving change foundation-and-ingest. Update Purpose after ar
 The system SHALL classify notes using clean, slash-separated, vault-relative paths. Absolute filesystem paths SHALL be converted to vault-relative paths only after validation that the path remains inside `vault_path`.
 
 #### Scenario: Absolute source path normalized
-- **WHEN** the walker discovers `{vault_path}/1.Projects/VetZ/State.md`
-- **THEN** the classifier receives `1.Projects/VetZ/State.md`
+- **WHEN** the walker discovers `{vault_path}/1.Projects/Acme/State.md`
+- **THEN** the classifier receives `1.Projects/Acme/State.md`
 
 #### Scenario: Path outside vault rejected
 - **WHEN** a discovered path does not resolve inside `vault_path`
@@ -23,11 +23,11 @@ The system SHALL detect note type from the file's vault-relative path using the 
 4. All other paths → `knowledge`
 
 #### Scenario: Daily work note classified
-- **WHEN** a file at `1.Projects/VetZ/1. Daily Work/2026/04/2026-04-24.md` is processed
+- **WHEN** a file at `1.Projects/Acme/1. Daily Work/2026/04/2026-04-24.md` is processed
 - **THEN** its note type is `daily_work`
 
 #### Scenario: Granola meeting note classified
-- **WHEN** a file at `4.Granola/2026-04/16/Daily Vetz-2026-04-16.md` is processed
+- **WHEN** a file at `4.Granola/2026-04/16/Daily Acme-2026-04-16.md` is processed
 - **THEN** its note type is `meeting`
 
 #### Scenario: State document classified
@@ -35,7 +35,7 @@ The system SHALL detect note type from the file's vault-relative path using the 
 - **THEN** its note type is `project_state`
 
 #### Scenario: General knowledge note classified (fallback)
-- **WHEN** a file at `1.Projects/VetZ/Backend/architecture-overview.md` is processed
+- **WHEN** a file at `1.Projects/Acme/Backend/architecture-overview.md` is processed
 - **THEN** its note type is `knowledge`
 
 #### Scenario: Daily work not in a project folder
@@ -61,35 +61,35 @@ When a file has YAML frontmatter, the system SHALL use normalized frontmatter fi
 The system SHALL normalize `tags` and `folders` frontmatter values from common YAML shapes, including scalar strings, comma-separated strings, YAML sequences, and hash-prefixed tags. Unsupported shapes SHALL produce a warning and an empty normalized list for that field.
 
 #### Scenario: Tags as YAML sequence
-- **WHEN** frontmatter contains `tags: [vetz, backend]`
-- **THEN** normalized tags are `['vetz', 'backend']`
+- **WHEN** frontmatter contains `tags: [acme, backend]`
+- **THEN** normalized tags are `['acme', 'backend']`
 
 #### Scenario: Tags as comma-separated string
-- **WHEN** frontmatter contains `tags: "#vetz, #backend"`
-- **THEN** normalized tags are `['vetz', 'backend']`
+- **WHEN** frontmatter contains `tags: "#acme, #backend"`
+- **THEN** normalized tags are `['acme', 'backend']`
 
 #### Scenario: Folders as scalar string
-- **WHEN** frontmatter contains `folders: VetZ`
-- **THEN** normalized folders are `['VetZ']`
+- **WHEN** frontmatter contains `folders: Acme`
+- **THEN** normalized folders are `['Acme']`
 
 ### Requirement: Resolve project from note path or frontmatter
 For notes under `1.Projects/`, the system SHALL extract the project name from the first path segment after `1.Projects/`. For Granola notes, the system SHALL use normalized frontmatter `folders:` values matched against configured project names and aliases.
 
 #### Scenario: Project resolved from path
-- **WHEN** a file at `1.Projects/VetZ/1. Daily Work/2026/04/2026-04-24.md` is processed
-- **THEN** the project name is `VetZ`
+- **WHEN** a file at `1.Projects/Acme/1. Daily Work/2026/04/2026-04-24.md` is processed
+- **THEN** the project name is `Acme`
 
 #### Scenario: Project resolved from Granola frontmatter
-- **WHEN** a Granola note at `4.Granola/2026-04/16/Daily Vetz-2026-04-16.md` has `folders: [VetZ]`
-- **THEN** the project name is `VetZ`
+- **WHEN** a Granola note at `4.Granola/2026-04/16/Daily Acme-2026-04-16.md` has `folders: [Acme]`
+- **THEN** the project name is `Acme`
 
 #### Scenario: Project resolved from Granola alias
-- **WHEN** a Granola note has `folders: [Vetz]` and config project `VetZ` has alias `Vetz`
-- **THEN** the note is associated with project `VetZ`
+- **WHEN** a Granola note has `folders: [Acme]` and config project `Acme` has alias `Acme`
+- **THEN** the note is associated with project `Acme`
 
 #### Scenario: Multiple Granola folders map to multiple projects
-- **WHEN** a Granola note has `folders: [VetZ, IReckonu]` and both projects are configured
-- **THEN** the scan produces one logical note record for `VetZ` and one logical note record for `IReckonu`
+- **WHEN** a Granola note has `folders: [Acme, IReckonu]` and both projects are configured
+- **THEN** the scan produces one logical note record for `Acme` and one logical note record for `IReckonu`
 
 #### Scenario: Ambiguous Granola folder alias
 - **WHEN** a Granola folder value matches aliases for more than one configured project

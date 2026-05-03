@@ -25,7 +25,7 @@ Foundation+Ingest    Search+Generate      Quality+Polish
 
 **Goal**: Turn the vault into a queryable SQLite database.
 
-**Output**: Running `zettelbrief scan --project VetZ` populates a local SQLite database with classified, metadata-tagged notes.
+**Output**: Running `zettelbrief scan --project Acme` populates a local SQLite database with classified, metadata-tagged notes.
 
 **In scope**:
 - Go module initialization, Cobra CLI scaffold (`scan`, `status` commands)

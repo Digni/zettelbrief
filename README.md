@@ -24,7 +24,7 @@ The first version should stay local and boring:
 Example workflow:
 
 ```sh
-zettelbrief fetch --project VetZ --repo One.Backend "fix billable service update persistence"
+zettelbrief fetch --project Acme --repo One.Backend "fix billable service update persistence"
 ```
 
 Possible output:
@@ -58,8 +58,8 @@ A generated brief should be concise and source-backed:
 - ...
 
 ## Sources
-- 1.Projects/VetZ/Meetings/...
-- 1.Projects/VetZ/1. Daily Work/...
+- 1.Projects/Acme/Meetings/...
+- 1.Projects/Acme/1. Daily Work/...
 ```
 
 The agent should receive a useful orientation, not a dump of raw notes.

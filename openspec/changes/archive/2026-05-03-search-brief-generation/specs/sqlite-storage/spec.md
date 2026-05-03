@@ -34,13 +34,13 @@ The store layer SHALL support retrieval of matching note rows filtered by projec
 - **AND** no unbounded cross-project search is executed
 
 #### Scenario: Optional metadata filters are combined
-- **WHEN** the fetch workflow searches with project `VetZ`, repo `One.Backend`, type `daily_work`, since `2026-04-01`, and until `2026-04-30`
-- **THEN** the store returns only `daily_work` notes for project `VetZ`
+- **WHEN** the fetch workflow searches with project `Acme`, repo `One.Backend`, type `daily_work`, since `2026-04-01`, and until `2026-04-30`
+- **THEN** the store returns only `daily_work` notes for project `Acme`
 - **AND** every returned row has repo `One.Backend`
 - **AND** every returned row has a date in the inclusive range `2026-04-01` through `2026-04-30`
 
 #### Scenario: Repo filter allows project-level notes
-- **WHEN** the fetch workflow searches with project `VetZ` and repo `One.Backend` without a type filter
+- **WHEN** the fetch workflow searches with project `Acme` and repo `One.Backend` without a type filter
 - **THEN** rows with repo `One.Frontend` are not returned
 - **AND** matching rows with empty/null repo remain eligible
 

@@ -79,7 +79,7 @@ func TestSectionCapAndTieBreaking(t *testing.T) {
 }
 
 func result(id int64, typ models.NoteType, path, section, repo, title, summary, notes string) store.SearchResult {
-	return store.SearchResult{ID: id, Project: "VetZ", Type: typ, SourcePath: path, SectionID: section, Repo: models.NullString(repo), Title: models.NullString(title), Summary: models.NullString(summary), NotesText: models.NullString(notes), Content: strings.Join([]string{title, summary, notes}, " "), Date: sql.NullString{String: "2026-04-24", Valid: true}}
+	return store.SearchResult{ID: id, Project: "Acme", Type: typ, SourcePath: path, SectionID: section, Repo: models.NullString(repo), Title: models.NullString(title), Summary: models.NullString(summary), NotesText: models.NullString(notes), Content: strings.Join([]string{title, summary, notes}, " "), Date: sql.NullString{String: "2026-04-24", Valid: true}}
 }
 
 func sectionEntries(entries []Entry, section string) []Entry {
