@@ -168,7 +168,7 @@ func buildNotes(project string, typ models.NoteType, rel, content string, fm map
 				continue
 			}
 			meta.Date = scanpkg.ExtractDate(rel, fm, typ)
-			notes = append(notes, noteFromMetadata(project, typ, rel, content, meta))
+			notes = append(notes, noteFromMetadata(project, typ, rel, section.Content, meta))
 		}
 		return notes
 	case models.NoteTypeMeeting:

@@ -26,7 +26,7 @@ func main() {
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{Use: "zettelbrief", Short: "Ingest Obsidian notes into a local SQLite database", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "print per-file warnings and progress")
-	root.AddCommand(newInitCommand(), newScanCommand(), newStatusCommand())
+	root.AddCommand(newInitCommand(), newScanCommand(), newStatusCommand(), newFetchCommand())
 	return root
 }
 
@@ -115,6 +115,38 @@ func newScanCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&project, "project", "", "project name to scan")
 	cmd.Flags().BoolVar(&all, "all", false, "scan all configured projects")
+	return cmd
+}
+
+func newFetchCommand() *cobra.Command {
+	var project, repo, noteType, since, until string
+	cmd := &cobra.Command{
+		Use:   "fetch [flags] <query>",
+		Short: "Generate a cited briefing pack from scanned notes",
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 1 {
+				return fmt.Errorf("fetch requires exactly one query argument")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			cfg, err := config.Load()
+			if err != nil {
+				return err
+			}
+			summary, err := app.RunFetch(*cfg, app.FetchOptions{Project: project, Repo: repo, Type: noteType, Since: since, Until: until, Query: args[0], DBPath: defaultDBPath()})
+			if err != nil {
+				return err
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), summary.OutputDir)
+			return nil
+		},
+	}
+	cmd.Flags().StringVar(&project, "project", "", "project name to fetch from")
+	cmd.Flags().StringVar(&repo, "repo", "", "optional repository filter")
+	cmd.Flags().StringVar(&noteType, "type", "", "optional note type filter (daily_work, knowledge, meeting, project_state)")
+	cmd.Flags().StringVar(&since, "since", "", "optional inclusive start date (YYYY-MM-DD)")
+	cmd.Flags().StringVar(&until, "until", "", "optional inclusive end date (YYYY-MM-DD)")
 	return cmd
 }
 

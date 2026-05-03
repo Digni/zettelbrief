@@ -42,6 +42,30 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if !strings.Contains(out, "VetZ") || !strings.Contains(out, "notes: 5") || !strings.Contains(out, "Flive") || !strings.Contains(out, "not yet scanned") {
 		t.Fatalf("status output = %s", out)
 	}
+	briefDir := strings.TrimSpace(runCLI(t, tmp, home, bin, "fetch", "--project", "VetZ", "--repo", "One.Backend", "persistence"))
+	if !strings.Contains(briefDir, filepath.Join(".zettelbrief", "briefs")) {
+		t.Fatalf("fetch output = %s", briefDir)
+	}
+	briefData, err := os.ReadFile(filepath.Join(tmp, briefDir, "brief.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	briefText := string(briefData)
+	if !strings.Contains(briefText, "## Relevant Prior Work") || !strings.Contains(briefText, "1.Projects/VetZ/Backend/architecture-overview.md") {
+		t.Fatalf("brief.md = %s", briefText)
+	}
+	sourcesData, err := os.ReadFile(filepath.Join(tmp, briefDir, "sources.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(sourcesData), "source_path") || !strings.Contains(string(sourcesData), "row_id") {
+		t.Fatalf("sources.json = %s", sourcesData)
+	}
+	for _, args := range [][]string{{"fetch", "--project", "VetZ"}, {"fetch", "persistence"}, {"fetch", "--project", "VetZ", "--since", "bad-date", "persistence"}, {"fetch", "--project", "VetZ", "--until", "bad-date", "persistence"}, {"fetch", "--project", "VetZ", "--since", "2026-05-01", "--until", "2026-04-01", "persistence"}, {"fetch", "--project", "VetZ", "--type", "unsupported", "persistence"}} {
+		if out, err := runCLIErr(t, tmp, home, bin, args...); err == nil || strings.Contains(out, "Usage:") {
+			t.Fatalf("expected clear failure without usage for %v: err=%v out=%s", args, err, out)
+		}
+	}
 	if err := os.Remove(filepath.Join(vault, "1.Projects", "VetZ", "Backend", "architecture-overview.md")); err != nil {
 		t.Fatal(err)
 	}
@@ -53,14 +77,20 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 
 func runCLI(t *testing.T, cwd, home, name string, args ...string) string {
 	t.Helper()
+	out, err := runCLIErr(t, cwd, home, name, args...)
+	if err != nil {
+		t.Fatalf("%s %s failed: %v\n%s", name, strings.Join(args, " "), err, out)
+	}
+	return out
+}
+
+func runCLIErr(t *testing.T, cwd, home, name string, args ...string) (string, error) {
+	t.Helper()
 	cmd := exec.Command(name, args...)
 	cmd.Dir = cwd
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.CombinedOutput()
-	if err != nil {
-		t.Fatalf("%s %s failed: %v\n%s", name, strings.Join(args, " "), err, out)
-	}
-	return string(out)
+	return string(out), err
 }
 
 func copyDir(t *testing.T, src, dst string) {

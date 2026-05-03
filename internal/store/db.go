@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/cyphant/zettelbrief/internal/models"
 	_ "modernc.org/sqlite"
@@ -53,19 +52,52 @@ func (db *DB) Close() error {
 }
 
 func (db *DB) Migrate() error {
-	stmts := []string{
+	base := []string{
 		`CREATE TABLE IF NOT EXISTS schema_migrations (version INTEGER PRIMARY KEY, applied_at TEXT NOT NULL DEFAULT (datetime('now')));`,
 		`CREATE TABLE IF NOT EXISTS scan_runs (id INTEGER PRIMARY KEY AUTOINCREMENT, project TEXT NOT NULL, started_at TEXT NOT NULL DEFAULT (datetime('now')), completed_at TEXT, status TEXT NOT NULL, error TEXT, files_seen INTEGER NOT NULL DEFAULT 0, notes_seen INTEGER NOT NULL DEFAULT 0);`,
 		`CREATE TABLE IF NOT EXISTS notes (id INTEGER PRIMARY KEY AUTOINCREMENT, project TEXT NOT NULL, type TEXT NOT NULL, section_id TEXT NOT NULL DEFAULT '', repo TEXT, branch TEXT, date TEXT, title TEXT, summary TEXT, verification TEXT, notes_text TEXT, commit_hash TEXT, ticket TEXT, granola_id TEXT, updated_at TEXT, tags TEXT, source_path TEXT NOT NULL, content TEXT NOT NULL, content_hash TEXT NOT NULL, metadata_json TEXT, seen_in_scan_id INTEGER, scanned_at TEXT NOT NULL DEFAULT (datetime('now')), UNIQUE(project, source_path, section_id), FOREIGN KEY(seen_in_scan_id) REFERENCES scan_runs(id));`,
-		`CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, summary, content, tags, content='notes', content_rowid='id');`,
-		`CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN INSERT INTO notes_fts(rowid, title, summary, content, tags) VALUES (new.id, new.title, new.summary, new.content, new.tags); END;`,
-		`CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, content, tags) VALUES('delete', old.id, old.title, old.summary, old.content, old.tags); END;`,
-		`CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, content, tags) VALUES('delete', old.id, old.title, old.summary, old.content, old.tags); INSERT INTO notes_fts(rowid, title, summary, content, tags) VALUES (new.id, new.title, new.summary, new.content, new.tags); END;`,
-		`INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);`,
+	}
+	for _, stmt := range base {
+		if _, err := db.SQL.Exec(stmt); err != nil {
+			return fmt.Errorf("migrate: %w", err)
+		}
+	}
+	if err := db.ensureFTSSchema(); err != nil {
+		return err
+	}
+	if _, err := db.SQL.Exec(`INSERT OR IGNORE INTO schema_migrations(version) VALUES (1);`); err != nil {
+		return fmt.Errorf("migrate: %w", err)
+	}
+	return nil
+}
+
+func (db *DB) ensureFTSSchema() error {
+	var hasNotesText int
+	if err := db.SQL.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('notes_fts') WHERE name='notes_text'`).Scan(&hasNotesText); err != nil {
+		return fmt.Errorf("inspect notes_fts: %w", err)
+	}
+	if hasNotesText == 0 {
+		for _, stmt := range []string{
+			`DROP TRIGGER IF EXISTS notes_ai;`,
+			`DROP TRIGGER IF EXISTS notes_ad;`,
+			`DROP TRIGGER IF EXISTS notes_au;`,
+			`DROP TABLE IF EXISTS notes_fts;`,
+		} {
+			if _, err := db.SQL.Exec(stmt); err != nil {
+				return fmt.Errorf("recreate notes_fts: %w", err)
+			}
+		}
+	}
+	stmts := []string{
+		`CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, summary, notes_text, content, tags, content='notes', content_rowid='id');`,
+		`CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN INSERT INTO notes_fts(rowid, title, summary, notes_text, content, tags) VALUES (new.id, new.title, new.summary, new.notes_text, new.content, new.tags); END;`,
+		`CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, notes_text, content, tags) VALUES('delete', old.id, old.title, old.summary, old.notes_text, old.content, old.tags); END;`,
+		`CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, notes_text, content, tags) VALUES('delete', old.id, old.title, old.summary, old.notes_text, old.content, old.tags); INSERT INTO notes_fts(rowid, title, summary, notes_text, content, tags) VALUES (new.id, new.title, new.summary, new.notes_text, new.content, new.tags); END;`,
+		`INSERT INTO notes_fts(notes_fts) VALUES('rebuild');`,
 	}
 	for _, stmt := range stmts {
 		if _, err := db.SQL.Exec(stmt); err != nil {
-			return fmt.Errorf("migrate: %w", err)
+			return fmt.Errorf("migrate fts: %w", err)
 		}
 	}
 	return nil
@@ -121,8 +153,4 @@ func DBExists(path string) bool {
 	}
 	_, err := os.Stat(path)
 	return err == nil
-}
-
-func sanitizeFTSQuery(q string) string {
-	return strings.ReplaceAll(q, `"`, `""`)
 }
