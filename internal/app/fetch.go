@@ -54,12 +54,13 @@ func RunFetch(cfg config.Config, opts FetchOptions) (FetchSummary, error) {
 		return summary, err
 	}
 	defer db.Close()
-	results, tokens, err := db.SearchNotes(store.SearchRequest{Project: opts.Project, Repo: opts.Repo, Type: typ, Since: opts.Since, Until: opts.Until, Query: opts.Query})
+	results, _, err := db.SearchNotes(store.SearchRequest{Project: opts.Project, Repo: opts.Repo, Type: typ, Since: opts.Since, Until: opts.Until, Query: opts.Query})
 	if err != nil {
 		return summary, err
 	}
 	generatedAt := opts.Now().UTC()
-	entries, sourceMap := brief.Compose(results, tokens, opts.Repo, generatedAt)
+	candidates := brief.CandidatesFromSearchResults(results)
+	entries, sourceMap := brief.ComposeCandidatesWithTerms(candidates, store.NormalizeSearchQuery(opts.Query), opts.Repo, generatedAt)
 	outputDir := filepath.Join(opts.OutputRoot, generatedAt.Format("2006-01-02T15-04-05Z"))
 	if err := os.MkdirAll(opts.OutputRoot, 0o700); err != nil {
 		return summary, fmt.Errorf("create briefs directory: %w", err)
@@ -95,6 +96,9 @@ func validateFetch(cfg config.Config, opts FetchOptions) (models.NoteType, error
 	}
 	if strings.TrimSpace(opts.Query) == "" {
 		return "", errors.New("fetch requires a query")
+	}
+	if len(store.TokenizeSearchQuery(opts.Query)) == 0 {
+		return "", errors.New("fetch query contains no searchable terms after removing task-framing stopwords")
 	}
 	typ, err := parseNoteType(opts.Type)
 	if err != nil {

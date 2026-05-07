@@ -6,12 +6,18 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/cyphant/zettelbrief/internal/config"
 	"github.com/cyphant/zettelbrief/internal/models"
 	scanpkg "github.com/cyphant/zettelbrief/internal/scan"
 	"github.com/cyphant/zettelbrief/internal/store"
 )
+
+type ScanOptions struct {
+	Since string
+	Until string
+}
 
 type ScanSummary struct {
 	Project         string
@@ -22,11 +28,25 @@ type ScanSummary struct {
 }
 
 func RunProjectScan(project string, cfg config.Config, db *store.DB) (ScanSummary, error) {
+	return RunProjectScanWithOptions(project, cfg, db, ScanOptions{})
+}
+
+func RunProjectScanWithOptions(project string, cfg config.Config, db *store.DB, opts ScanOptions) (ScanSummary, error) {
 	summary := ScanSummary{Project: project}
 	if err := cfg.ValidateForScan(project); err != nil {
 		return summary, err
 	}
+	if _, err := parseDateFlag("since", opts.Since); err != nil {
+		return summary, err
+	}
+	if _, err := parseDateFlag("until", opts.Until); err != nil {
+		return summary, err
+	}
+	if opts.Since != "" && opts.Until != "" && opts.Since > opts.Until {
+		return summary, fmt.Errorf("invalid date range: --since %s is after --until %s", opts.Since, opts.Until)
+	}
 	notes, filesSeen, warnings, err := collectProjectNotes(project, cfg)
+	notes = filterNotesByDate(notes, opts)
 	summary.FilesDiscovered = filesSeen
 	summary.Warnings = append(summary.Warnings, warnings...)
 	if err != nil {
@@ -52,11 +72,13 @@ func RunProjectScan(project string, cfg config.Config, db *store.DB) (ScanSummar
 		}
 		summary.RecordsUpserted++
 	}
-	removed, err := db.DeleteStaleNotesTx(tx, project, runID)
-	if err != nil {
-		return failTx(err)
+	if !scanDateFilterActive(opts) {
+		removed, err := db.DeleteStaleNotesTx(tx, project, runID)
+		if err != nil {
+			return failTx(err)
+		}
+		summary.StaleRemoved = removed
 	}
-	summary.StaleRemoved = removed
 	if err := db.CompleteScanRunTx(tx, runID, filesSeen, len(notes)); err != nil {
 		return failTx(err)
 	}
@@ -153,7 +175,41 @@ func readAndParse(vaultPath, rel string) (string, map[string]interface{}, []stri
 	if _, ok := scanpkg.NormalizeFrontmatterList(fm, "tags"); !ok {
 		warnings = append(warnings, fmt.Sprintf("%s: unsupported tags frontmatter shape", rel))
 	}
+	warnings = append(warnings, malformedDateWarnings(rel, fm)...)
 	return content, fm, warnings, true
+}
+
+func malformedDateWarnings(rel string, fm map[string]interface{}) []string {
+	var warnings []string
+	for _, field := range []string{"created", "date"} {
+		raw, ok := fm[field]
+		if !ok || raw == nil || frontmatterDateValid(raw) {
+			continue
+		}
+		warnings = append(warnings, fmt.Sprintf("%s: malformed %s frontmatter date", rel, field))
+	}
+	return warnings
+}
+
+func frontmatterDateValid(raw interface{}) bool {
+	switch value := raw.(type) {
+	case time.Time:
+		return true
+	case string:
+		value = strings.TrimSpace(value)
+		if value == "" {
+			return true
+		}
+		if len(value) >= len("2006-01-02") {
+			if _, err := time.Parse("2006-01-02", value[:len("2006-01-02")]); err == nil {
+				return true
+			}
+		}
+		_, err := time.Parse(time.RFC3339Nano, value)
+		return err == nil
+	default:
+		return false
+	}
 }
 
 func buildNotes(project string, typ models.NoteType, rel, content string, fm map[string]interface{}, warnings *[]string) []models.Note {
@@ -182,6 +238,30 @@ func buildNotes(project string, typ models.NoteType, rel, content string, fm map
 		meta.Date = scanpkg.ExtractDate(rel, fm, typ)
 		return []models.Note{noteFromMetadata(project, typ, rel, content, meta)}
 	}
+}
+
+func filterNotesByDate(notes []models.Note, opts ScanOptions) []models.Note {
+	if !scanDateFilterActive(opts) {
+		return notes
+	}
+	filtered := make([]models.Note, 0, len(notes))
+	for _, note := range notes {
+		if !note.Date.Valid || note.Date.String == "" {
+			continue
+		}
+		if opts.Since != "" && note.Date.String < opts.Since {
+			continue
+		}
+		if opts.Until != "" && note.Date.String > opts.Until {
+			continue
+		}
+		filtered = append(filtered, note)
+	}
+	return filtered
+}
+
+func scanDateFilterActive(opts ScanOptions) bool {
+	return opts.Since != "" || opts.Until != ""
 }
 
 func noteFromMetadata(project string, typ models.NoteType, rel, content string, meta models.NoteMetadata) models.Note {

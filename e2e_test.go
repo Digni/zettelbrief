@@ -34,6 +34,10 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if out, err := build.CombinedOutput(); err != nil {
 		t.Fatalf("go build failed: %v\n%s", err, out)
 	}
+	help := runCLI(t, tmp, home, bin, "scan", "--help")
+	if !strings.Contains(help, "--since") || !strings.Contains(help, "--until") {
+		t.Fatalf("scan help = %s", help)
+	}
 	out := runCLI(t, tmp, home, bin, "scan", "--project", "Acme")
 	if !strings.Contains(out, "Records inserted/updated: 5") {
 		t.Fatalf("scan output = %s", out)
@@ -58,10 +62,13 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(sourcesData), "source_path") || !strings.Contains(string(sourcesData), "row_id") {
-		t.Fatalf("sources.json = %s", sourcesData)
+	sourcesText := string(sourcesData)
+	for _, field := range []string{"source_path", "row_id", "classification", "confidence", "match_reason", "excerpt", "score", "recency_factor"} {
+		if !strings.Contains(sourcesText, field) {
+			t.Fatalf("sources.json missing %s = %s", field, sourcesData)
+		}
 	}
-	for _, args := range [][]string{{"fetch", "--project", "Acme"}, {"fetch", "persistence"}, {"fetch", "--project", "Acme", "--since", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--until", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--since", "2026-05-01", "--until", "2026-04-01", "persistence"}, {"fetch", "--project", "Acme", "--type", "unsupported", "persistence"}} {
+	for _, args := range [][]string{{"fetch", "--project", "Acme"}, {"fetch", "persistence"}, {"fetch", "--project", "Acme", "--since", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--until", "bad-date", "persistence"}, {"fetch", "--project", "Acme", "--since", "2026-05-01", "--until", "2026-04-01", "persistence"}, {"fetch", "--project", "Acme", "--type", "unsupported", "persistence"}, {"scan", "--project", "Acme", "--since", "bad-date"}, {"scan", "--project", "Acme", "--since", "2026-05-01", "--until", "2026-04-01"}} {
 		if out, err := runCLIErr(t, tmp, home, bin, args...); err == nil || strings.Contains(out, "Usage:") {
 			t.Fatalf("expected clear failure without usage for %v: err=%v out=%s", args, err, out)
 		}

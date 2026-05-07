@@ -3,11 +3,89 @@ package app
 import (
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/cyphant/zettelbrief/internal/config"
 	"github.com/cyphant/zettelbrief/internal/store"
 )
+
+func TestMalformedFrontmatterDateWarningsArePathScoped(t *testing.T) {
+	vault := filepath.Join(t.TempDir(), "vault")
+	projectDir := filepath.Join(vault, "1.Projects", "Acme")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "bad.md"), []byte("---\ndate: not-a-date\n---\n# Bad\n\npersistence"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "good.md"), []byte("---\ndate: 2026-04-01\n---\n# Good\n\npersistence"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{VaultPath: vault, Projects: map[string]config.ProjectConfig{"Acme": {Folders: []string{"1.Projects/Acme"}}}}
+	db, err := store.Open(filepath.Join(t.TempDir(), "db.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	summary, err := RunProjectScanWithOptions("Acme", cfg, db, ScanOptions{Since: "2026-04-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	joined := strings.Join(summary.Warnings, "\n")
+	if !strings.Contains(joined, "1.Projects/Acme/bad.md: malformed date frontmatter date") || strings.Contains(joined, "not-a-date") {
+		t.Fatalf("warnings=%#v", summary.Warnings)
+	}
+	if strings.Contains(joined, "good.md") {
+		t.Fatalf("valid date should not warn: %#v", summary.Warnings)
+	}
+}
+
+func TestRunProjectScanDateSliceIsInclusiveAndNonDestructive(t *testing.T) {
+	vault := filepath.Join(t.TempDir(), "vault")
+	projectDir := filepath.Join(vault, "1.Projects", "Acme")
+	if err := os.MkdirAll(projectDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "2026-04-01-old.md"), []byte("# Old\n\nold persistence"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "2026-05-01-new.md"), []byte("# New\n\nnew persistence"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(projectDir, "undated.md"), []byte("# Undated\n\nundated persistence"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cfg := config.Config{VaultPath: vault, Projects: map[string]config.ProjectConfig{"Acme": {Folders: []string{"1.Projects/Acme"}}}}
+	db, err := store.Open(filepath.Join(t.TempDir(), "db.sqlite"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+	if _, err := RunProjectScan("Acme", cfg, db); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(projectDir, "2026-04-01-old.md")); err != nil {
+		t.Fatal(err)
+	}
+	summary, err := RunProjectScanWithOptions("Acme", cfg, db, ScanOptions{Since: "2026-05-01"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if summary.RecordsUpserted != 1 || summary.StaleRemoved != 0 {
+		t.Fatalf("date-sliced summary=%#v", summary)
+	}
+	count, err := db.CountNotes("Acme")
+	if err != nil || count != 3 {
+		t.Fatalf("date slice should preserve existing out-of-slice/undated rows, count=%d err=%v", count, err)
+	}
+	if _, err := RunProjectScanWithOptions("Acme", cfg, db, ScanOptions{Since: "bad-date"}); err == nil {
+		t.Fatalf("expected invalid scan date error")
+	}
+	if _, err := RunProjectScanWithOptions("Acme", cfg, db, ScanOptions{Since: "2026-05-01", Until: "2026-04-01"}); err == nil {
+		t.Fatalf("expected reversed scan date range error")
+	}
+}
 
 func TestRunProjectScanFixtureAndStaleCleanup(t *testing.T) {
 	vault := filepath.Join("..", "..", "testdata", "vault")

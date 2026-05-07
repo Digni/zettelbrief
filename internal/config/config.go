@@ -176,6 +176,9 @@ func (c *Config) ValidateForScan(project string) error {
 
 func (c *Config) validateProject(name string) error {
 	pc := c.Projects[name]
+	if len(pc.Folders) == 0 {
+		return fmt.Errorf("project %q must define at least one folder", name)
+	}
 	for _, folder := range pc.Folders {
 		if err := ValidateVaultRelativeFolder(c.VaultPath, folder); err != nil {
 			return fmt.Errorf("project %q folder %q: %w", name, folder, err)

@@ -26,6 +26,18 @@ func TestLoadGlobalMissingAndInvalidYAML(t *testing.T) {
 	}
 }
 
+func TestValidateForScanRejectsEmptyProjectFolders(t *testing.T) {
+	vault := filepath.Join(t.TempDir(), "vault")
+	if err := os.MkdirAll(vault, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	cfg := Config{VaultPath: vault, Projects: map[string]ProjectConfig{"Acme": {Folders: nil}}}
+	err := cfg.ValidateForScan("Acme")
+	if err == nil || !strings.Contains(err.Error(), `project "Acme" must define at least one folder`) {
+		t.Fatalf("err=%v", err)
+	}
+}
+
 func TestMergeDiscoveryValidationAndSortedNames(t *testing.T) {
 	tmp := t.TempDir()
 	vault := filepath.Join(tmp, "vault")

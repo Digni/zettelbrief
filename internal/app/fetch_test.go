@@ -93,6 +93,7 @@ func TestRunFetchValidationAndMissingDatabaseDoNotCreateOutput(t *testing.T) {
 		{Project: "Acme", Query: "persistence", Since: "not-a-date", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 		{Project: "Acme", Query: "persistence", Since: "2026-05-01", Until: "2026-04-01", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 		{Project: "Acme", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
+		{Project: "Acme", Query: "fix add update the", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 		{Query: "persistence", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 		{Project: "Acme", Query: "persistence", DBPath: filepath.Join(t.TempDir(), "missing.db"), OutputRoot: outRoot},
 	}

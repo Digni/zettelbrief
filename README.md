@@ -24,8 +24,13 @@ The first version should stay local and boring:
 Example workflow:
 
 ```sh
+zettelbrief scan --project Acme --since 2026-04-01 --until 2026-04-30
 zettelbrief fetch --project Acme --repo One.Backend "fix billable service update persistence"
 ```
+
+Scan date flags are inclusive processing filters for the current invocation. Date-sliced scans are non-destructive: out-of-range and undated notes are not written for that run, and stale cleanup is skipped so previously indexed rows are not deleted solely because they are outside the slice.
+
+Incremental scan skipping is benchmark-gated and currently deferred: the checked-in `testdata/scan-benchmark` fixture measures full scans well below the 2s enablement threshold, so scans continue to parse discovered files normally.
 
 Possible output:
 

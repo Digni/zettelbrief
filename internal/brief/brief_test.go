@@ -62,6 +62,58 @@ func TestTypeWeightBreaksEqualDensity(t *testing.T) {
 	}
 }
 
+func TestQualityFieldsConfidenceRecencyIdentifierAndExcerpt(t *testing.T) {
+	now := time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC)
+	candidate := Candidate{ID: 10, Project: "Acme", Type: models.NoteTypeDailyWork, SourcePath: "daily.md", SectionID: "001", Repo: models.NullString("One.Backend"), Branch: models.NullString("feature/billable"), Title: models.NullString("One.Backend"), Summary: models.NullString("Fixed billable persistence"), Content: "Fixed billable persistence", Date: sql.NullString{String: "2026-04-21", Valid: true}}
+	terms := []store.QueryTerm{{Raw: "One.Backend", Tokens: []string{"one", "backend"}, Identifier: true}, {Raw: "persistence", Tokens: []string{"persistence"}}}
+	entries, sources := ComposeCandidatesWithTerms([]Candidate{candidate}, terms, "One.Backend", now)
+	if len(entries) == 0 || entries[0].Confidence != ConfidenceHigh || entries[0].MatchReason != "repo:One.Backend" {
+		t.Fatalf("entry confidence/reason = %#v", entries)
+	}
+	if entries[0].BaseScore == 0 || entries[0].Score == 0 || entries[0].RecencyFactor <= 0.9 || entries[0].Excerpt != "Fixed billable persistence" {
+		t.Fatalf("entry quality fields = %#v", entries[0])
+	}
+	if len(sources.Entries) == 0 || sources.Entries[0].Classification != "daily_work" || sources.Entries[0].Confidence != ConfidenceHigh || sources.Entries[0].MatchReason == "" || sources.Entries[0].Excerpt == "" || sources.Entries[0].Score == 0 || sources.Entries[0].RecencyFactor == 0 || sources.Entries[0].CharOffsetStart == nil {
+		t.Fatalf("source mapping = %#v", sources.Entries)
+	}
+
+	projectCandidate := candidate
+	projectCandidate.Repo = models.NullString("Other.Repo")
+	entries, _ = ComposeCandidatesWithTerms([]Candidate{projectCandidate}, terms, "", now)
+	if entries[0].Confidence != ConfidenceMedium || entries[0].MatchReason != "project:Acme" {
+		t.Fatalf("project confidence = %#v", entries[0])
+	}
+
+	lowCandidate := candidate
+	lowCandidate.Project = ""
+	lowCandidate.Repo = sql.NullString{}
+	entries, _ = ComposeCandidatesWithTerms([]Candidate{lowCandidate}, []store.QueryTerm{{Raw: "billable", Tokens: []string{"billable"}}}, "", now)
+	if entries[0].Confidence != ConfidenceLow || entries[0].MatchReason != "branch:feature/billable" {
+		t.Fatalf("low confidence = %#v", entries[0])
+	}
+
+	meeting := Candidate{ID: 11, Project: "Acme", Type: models.NoteTypeMeeting, SourcePath: "meeting.md", Title: models.NullString("Meeting"), Content: "full meeting content", Snippet: models.NullString("snippet around persistence"), Date: sql.NullString{String: "2025-10-01", Valid: true}}
+	entries, _ = ComposeCandidatesWithTerms([]Candidate{meeting}, []store.QueryTerm{{Raw: "persistence", Tokens: []string{"persistence"}}}, "", now)
+	if len(entries) == 0 || entries[0].Excerpt != "snippet around persistence" || entries[0].RecencyFactor < 0.3 || entries[0].RecencyFactor > 1.0 {
+		t.Fatalf("meeting excerpt/recency = %#v", entries)
+	}
+
+	state := Candidate{ID: 12, Project: "Acme", Type: models.NoteTypeProjectState, SourcePath: "state.md", Title: models.NullString("State"), Content: "# State\n\nFirst project paragraph.\n\n# Open Question\nLater.", Date: sql.NullString{String: "2020-01-01", Valid: true}}
+	entries, _ = ComposeCandidatesWithTerms([]Candidate{state}, []store.QueryTerm{{Raw: "project", Tokens: []string{"project"}}}, "", now)
+	if len(entries) == 0 || entries[0].Excerpt != "First project paragraph." || entries[0].RecencyFactor != 1.0 {
+		t.Fatalf("state excerpt/recency = %#v", entries)
+	}
+}
+
+func TestIdentifierWeightingIncreasesScore(t *testing.T) {
+	candidate := Candidate{ID: 1, Project: "Acme", Type: models.NoteTypeKnowledge, SourcePath: "k.md", Title: models.NullString("One Backend"), Content: "one backend persistence"}
+	plainBase, _, _ := ScoreCandidateDetailed(candidate, []store.QueryTerm{{Raw: "one", Tokens: []string{"one"}}}, "Relevant Prior Work", time.Now())
+	identifierBase, _, _ := ScoreCandidateDetailed(candidate, []store.QueryTerm{{Raw: "One.Backend", Tokens: []string{"one", "backend"}, Identifier: true}}, "Relevant Prior Work", time.Now())
+	if identifierBase <= plainBase {
+		t.Fatalf("identifierBase=%f plainBase=%f", identifierBase, plainBase)
+	}
+}
+
 func TestSectionCapAndTieBreaking(t *testing.T) {
 	var results []store.SearchResult
 	for i := 20; i >= 1; i-- {

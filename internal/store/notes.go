@@ -3,6 +3,7 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 
 	"github.com/cyphant/zettelbrief/internal/models"
@@ -45,6 +46,26 @@ ON CONFLICT(project, source_path, section_id) DO UPDATE SET
 
 func (db *DB) DeleteStaleNotesTx(tx *sql.Tx, project string, scanRunID int64) (int64, error) {
 	res, err := tx.Exec(`DELETE FROM notes WHERE project=? AND (seen_in_scan_id IS NULL OR seen_in_scan_id <> ?)`, project, scanRunID)
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
+}
+
+func (db *DB) ContentHashForSourceTx(tx *sql.Tx, project, sourcePath string) (string, bool, error) {
+	var hash string
+	err := tx.QueryRow(`SELECT content_hash FROM notes WHERE project=? AND source_path=? ORDER BY id LIMIT 1`, project, sourcePath).Scan(&hash)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", false, nil
+	}
+	if err != nil {
+		return "", false, err
+	}
+	return hash, true, nil
+}
+
+func (db *DB) MarkSourcePathSeenTx(tx *sql.Tx, project, sourcePath string, scanRunID int64) (int64, error) {
+	res, err := tx.Exec(`UPDATE notes SET seen_in_scan_id=?, scanned_at=datetime('now') WHERE project=? AND source_path=?`, scanRunID, project, sourcePath)
 	if err != nil {
 		return 0, err
 	}

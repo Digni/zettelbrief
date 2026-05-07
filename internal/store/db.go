@@ -76,7 +76,8 @@ func (db *DB) ensureFTSSchema() error {
 	if err := db.SQL.QueryRow(`SELECT COUNT(*) FROM pragma_table_info('notes_fts') WHERE name='notes_text'`).Scan(&hasNotesText); err != nil {
 		return fmt.Errorf("inspect notes_fts: %w", err)
 	}
-	if hasNotesText == 0 {
+	rebuild := hasNotesText == 0
+	if rebuild {
 		for _, stmt := range []string{
 			`DROP TRIGGER IF EXISTS notes_ai;`,
 			`DROP TRIGGER IF EXISTS notes_ad;`,
@@ -92,8 +93,11 @@ func (db *DB) ensureFTSSchema() error {
 		`CREATE VIRTUAL TABLE IF NOT EXISTS notes_fts USING fts5(title, summary, notes_text, content, tags, content='notes', content_rowid='id');`,
 		`CREATE TRIGGER IF NOT EXISTS notes_ai AFTER INSERT ON notes BEGIN INSERT INTO notes_fts(rowid, title, summary, notes_text, content, tags) VALUES (new.id, new.title, new.summary, new.notes_text, new.content, new.tags); END;`,
 		`CREATE TRIGGER IF NOT EXISTS notes_ad AFTER DELETE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, notes_text, content, tags) VALUES('delete', old.id, old.title, old.summary, old.notes_text, old.content, old.tags); END;`,
-		`CREATE TRIGGER IF NOT EXISTS notes_au AFTER UPDATE ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, notes_text, content, tags) VALUES('delete', old.id, old.title, old.summary, old.notes_text, old.content, old.tags); INSERT INTO notes_fts(rowid, title, summary, notes_text, content, tags) VALUES (new.id, new.title, new.summary, new.notes_text, new.content, new.tags); END;`,
-		`INSERT INTO notes_fts(notes_fts) VALUES('rebuild');`,
+		`DROP TRIGGER IF EXISTS notes_au;`,
+		`CREATE TRIGGER notes_au AFTER UPDATE OF title, summary, notes_text, content, tags ON notes BEGIN INSERT INTO notes_fts(notes_fts, rowid, title, summary, notes_text, content, tags) VALUES('delete', old.id, old.title, old.summary, old.notes_text, old.content, old.tags); INSERT INTO notes_fts(rowid, title, summary, notes_text, content, tags) VALUES (new.id, new.title, new.summary, new.notes_text, new.content, new.tags); END;`,
+	}
+	if rebuild {
+		stmts = append(stmts, `INSERT INTO notes_fts(notes_fts) VALUES('rebuild');`)
 	}
 	for _, stmt := range stmts {
 		if _, err := db.SQL.Exec(stmt); err != nil {

@@ -15,7 +15,7 @@ func TestSearchNotesSafeInputAndCitationFields(t *testing.T) {
 	if err != nil {
 		t.Fatalf("search failed: %v", err)
 	}
-	if len(tokens) != 4 {
+	if len(tokens) != 3 {
 		t.Fatalf("tokens = %#v", tokens)
 	}
 	if len(results) != 1 {
@@ -24,6 +24,9 @@ func TestSearchNotesSafeInputAndCitationFields(t *testing.T) {
 	got := results[0]
 	if got.ID == 0 || got.SourcePath != "knowledge.md" || got.SectionID != "" || got.Type != models.NoteTypeKnowledge || len(got.Tags) != 1 || got.Tags[0] != "backend" {
 		t.Fatalf("result missing routing/citation fields: %#v", got)
+	}
+	if !got.Snippet.Valid || got.Snippet.String == "" || len(got.Snippet.String) > len(got.Content) {
+		t.Fatalf("snippet = %#v", got.Snippet)
 	}
 }
 

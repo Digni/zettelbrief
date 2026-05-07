@@ -69,6 +69,7 @@ func newInitCommand() *cobra.Command {
 func newScanCommand() *cobra.Command {
 	var project string
 	var all bool
+	var since, until string
 	cmd := &cobra.Command{
 		Use:   "scan",
 		Short: "Scan configured project notes",
@@ -99,7 +100,7 @@ func newScanCommand() *cobra.Command {
 				if verbose {
 					fmt.Fprintf(os.Stderr, "scanning project %s\n", name)
 				}
-				summary, err := app.RunProjectScan(name, *cfg, db)
+				summary, err := app.RunProjectScanWithOptions(name, *cfg, db, app.ScanOptions{Since: since, Until: until})
 				if err != nil {
 					return err
 				}
@@ -115,6 +116,8 @@ func newScanCommand() *cobra.Command {
 	}
 	cmd.Flags().StringVar(&project, "project", "", "project name to scan")
 	cmd.Flags().BoolVar(&all, "all", false, "scan all configured projects")
+	cmd.Flags().StringVar(&since, "since", "", "optional inclusive start date (YYYY-MM-DD)")
+	cmd.Flags().StringVar(&until, "until", "", "optional inclusive end date (YYYY-MM-DD)")
 	return cmd
 }
 
