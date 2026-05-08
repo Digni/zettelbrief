@@ -82,6 +82,61 @@ func TestEndToEndScanStatusAndStale(t *testing.T) {
 	}
 }
 
+func TestEndToEndSkillCreate(t *testing.T) {
+	_, file, _, _ := runtime.Caller(0)
+	repo := filepath.Dir(file)
+	tmp := t.TempDir()
+	home := filepath.Join(tmp, "home")
+	bin := filepath.Join(tmp, "zettelbrief")
+	build := exec.Command("go", "build", "-o", bin, "./cmd/zettelbrief")
+	build.Dir = repo
+	if out, err := build.CombinedOutput(); err != nil {
+		t.Fatalf("go build failed: %v\n%s", err, out)
+	}
+
+	userOut := runCLI(t, tmp, home, bin, "skill", "create", "--user", "--default", "--claude")
+	for _, path := range []string{
+		filepath.Join(home, ".agents", "skills", "zettelbrief", "SKILL.md"),
+		filepath.Join(home, ".claude", "skills", "zettelbrief", "SKILL.md"),
+	} {
+		if !strings.Contains(userOut, path) {
+			t.Fatalf("user output missing %s:\n%s", path, userOut)
+		}
+		assertExists(t, path)
+	}
+	assertNotExists(t, filepath.Join(tmp, ".zettelbrief", "briefs"))
+
+	project := filepath.Join(tmp, "project")
+	if err := os.MkdirAll(filepath.Join(project, "sub"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	gitE2E(t, project, "init")
+	projectRoot := realPathE2E(t, project)
+	projectOut := runCLI(t, filepath.Join(project, "sub"), home, bin, "skill", "create", "--project", "--default", "--claude")
+	for _, path := range []string{
+		filepath.Join(projectRoot, ".agents", "skills", "zettelbrief", "SKILL.md"),
+		filepath.Join(projectRoot, ".claude", "skills", "zettelbrief", "SKILL.md"),
+	} {
+		if !strings.Contains(projectOut, path) {
+			t.Fatalf("project output missing %s:\n%s", path, projectOut)
+		}
+		assertExists(t, path)
+	}
+	assertNotExists(t, filepath.Join(project, ".zettelbrief", "briefs"))
+
+	nonGit := filepath.Join(tmp, "non-git")
+	if err := os.MkdirAll(nonGit, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	nonGitOut := runCLI(t, nonGit, home, bin, "skill", "create", "--project", "--default")
+	nonGitPath := filepath.Join(nonGit, ".agents", "skills", "zettelbrief", "SKILL.md")
+	if !strings.Contains(nonGitOut, nonGitPath) {
+		t.Fatalf("non-git output missing %s:\n%s", nonGitPath, nonGitOut)
+	}
+	assertExists(t, nonGitPath)
+	assertNotExists(t, filepath.Join(nonGit, ".zettelbrief", "briefs"))
+}
+
 func runCLI(t *testing.T, cwd, home, name string, args ...string) string {
 	t.Helper()
 	out, err := runCLIErr(t, cwd, home, name, args...)
@@ -98,6 +153,39 @@ func runCLIErr(t *testing.T, cwd, home, name string, args ...string) (string, er
 	cmd.Env = append(os.Environ(), "HOME="+home)
 	out, err := cmd.CombinedOutput()
 	return string(out), err
+}
+
+func assertExists(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); err != nil {
+		t.Fatalf("expected %s to exist: %v", path, err)
+	}
+}
+
+func assertNotExists(t *testing.T, path string) {
+	t.Helper()
+	if _, err := os.Stat(path); !os.IsNotExist(err) {
+		t.Fatalf("expected %s to not exist, stat err=%v", path, err)
+	}
+}
+
+func gitE2E(t *testing.T, dir string, args ...string) {
+	t.Helper()
+	cmd := exec.Command("git", args...)
+	cmd.Dir = dir
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		t.Fatalf("git %s failed in %s: %v\n%s", strings.Join(args, " "), dir, err, out)
+	}
+}
+
+func realPathE2E(t *testing.T, path string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
 }
 
 func copyDir(t *testing.T, src, dst string) {

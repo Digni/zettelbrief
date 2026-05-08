@@ -40,6 +40,27 @@ Possible output:
   sources.json
 ```
 
+## Agent Skill
+
+Install reusable agent instructions with `zettelbrief skill create`. Choose exactly one scope and at least one target:
+
+```sh
+zettelbrief skill create --user --default
+zettelbrief skill create --project --default --claude
+```
+
+Scopes:
+
+- `--user` writes under the user's skill directories.
+- `--project` writes under the current git root, or the current directory outside git.
+
+Targets:
+
+- `--default` writes `.agents/skills/zettelbrief/SKILL.md` (`~/.agents/skills/...` with `--user`, `<project-root>/.agents/skills/...` with `--project`).
+- `--claude` writes `.claude/skills/zettelbrief/SKILL.md` (`~/.claude/skills/...` with `--user`, `<project-root>/.claude/skills/...` with `--project`).
+
+Existing `SKILL.md` files are not overwritten unless `--force` is supplied. With `--force`, only `SKILL.md` is replaced; sibling files in the skill directory are preserved. Restart or reload your agent if it does not discover the new skill immediately.
+
 ## Brief Shape
 
 A generated brief should be concise and source-backed:

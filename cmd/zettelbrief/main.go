@@ -10,6 +10,7 @@ import (
 	"github.com/cyphant/zettelbrief/internal/app"
 	"github.com/cyphant/zettelbrief/internal/config"
 	"github.com/cyphant/zettelbrief/internal/models"
+	"github.com/cyphant/zettelbrief/internal/skill"
 	"github.com/cyphant/zettelbrief/internal/store"
 	"github.com/spf13/cobra"
 )
@@ -26,7 +27,7 @@ func main() {
 func newRootCommand() *cobra.Command {
 	root := &cobra.Command{Use: "zettelbrief", Short: "Ingest Obsidian notes into a local SQLite database", SilenceUsage: true, SilenceErrors: true}
 	root.PersistentFlags().BoolVarP(&verbose, "verbose", "v", false, "print per-file warnings and progress")
-	root.AddCommand(newInitCommand(), newScanCommand(), newStatusCommand(), newFetchCommand())
+	root.AddCommand(newInitCommand(), newScanCommand(), newStatusCommand(), newFetchCommand(), newSkillCommand())
 	return root
 }
 
@@ -118,6 +119,75 @@ func newScanCommand() *cobra.Command {
 	cmd.Flags().BoolVar(&all, "all", false, "scan all configured projects")
 	cmd.Flags().StringVar(&since, "since", "", "optional inclusive start date (YYYY-MM-DD)")
 	cmd.Flags().StringVar(&until, "until", "", "optional inclusive end date (YYYY-MM-DD)")
+	return cmd
+}
+
+func newSkillCommand() *cobra.Command {
+	cmd := &cobra.Command{
+		Use:   "skill",
+		Short: "Manage installable agent skills",
+	}
+	cmd.AddCommand(newSkillCreateCommand())
+	return cmd
+}
+
+func newSkillCreateCommand() *cobra.Command {
+	var userScope, projectScope, defaultTarget, claudeTarget, force bool
+	cmd := &cobra.Command{
+		Use:   "create",
+		Short: "Create a zettelbrief Agent Skill",
+		Long: strings.TrimSpace(`Create a zettelbrief Agent Skill in an explicit scope and target.
+
+Scopes (choose exactly one):
+  --user      write under ~/.agents/skills or ~/.claude/skills
+  --project   write under the current git root, or the current directory outside git
+
+Targets (choose at least one):
+  --default   write .agents/skills/zettelbrief/SKILL.md
+  --claude    write .claude/skills/zettelbrief/SKILL.md
+
+Use --force to overwrite an existing SKILL.md. Sibling files in the zettelbrief skill directory are preserved.
+Restart or reload your agent if it does not discover the new skill immediately.`),
+		Args: func(cmd *cobra.Command, args []string) error {
+			if len(args) != 0 {
+				return fmt.Errorf("skill create does not accept arguments")
+			}
+			if (userScope && projectScope) || (!userScope && !projectScope) {
+				return fmt.Errorf("exactly one scope is required (--user or --project)")
+			}
+			if !defaultTarget && !claudeTarget {
+				return fmt.Errorf("at least one agent target is required (--default or --claude)")
+			}
+			return nil
+		},
+		RunE: func(cmd *cobra.Command, args []string) error {
+			scope := skill.ScopeProject
+			if userScope {
+				scope = skill.ScopeUser
+			}
+			targets := []skill.Target{}
+			if defaultTarget {
+				targets = append(targets, skill.TargetDefault)
+			}
+			if claudeTarget {
+				targets = append(targets, skill.TargetClaude)
+			}
+			result, err := skill.Create(skill.CreateOptions{Scope: scope, Targets: targets, Force: force})
+			if err != nil {
+				return err
+			}
+			for _, path := range result.Paths {
+				fmt.Fprintf(cmd.OutOrStdout(), "Created %s\n", path)
+			}
+			fmt.Fprintln(cmd.OutOrStdout(), "Restart or reload your agent if the skill is not detected immediately.")
+			return nil
+		},
+	}
+	cmd.Flags().BoolVar(&userScope, "user", false, "create the skill in the user skill directory")
+	cmd.Flags().BoolVar(&projectScope, "project", false, "create the skill in the current project skill directory")
+	cmd.Flags().BoolVar(&defaultTarget, "default", false, "target .agents/skills/zettelbrief/SKILL.md")
+	cmd.Flags().BoolVar(&claudeTarget, "claude", false, "target .claude/skills/zettelbrief/SKILL.md")
+	cmd.Flags().BoolVar(&force, "force", false, "overwrite an existing zettelbrief/SKILL.md while preserving siblings")
 	return cmd
 }
 

@@ -55,7 +55,7 @@ func TestTypeWeightBreaksEqualDensity(t *testing.T) {
 		result(1, models.NoteTypeKnowledge, "a.md", "", "", "", "persistence", ""),
 		result(2, models.NoteTypeDailyWork, "b.md", "001", "One.Backend", "", "persistence", ""),
 	}
-	entries, _ := Compose(results, []string{"persistence"}, "", time.Now())
+	entries, _ := Compose(results, []string{"persistence"}, "", time.Date(2026, 5, 1, 0, 0, 0, 0, time.UTC))
 	prior := sectionEntries(entries, "Relevant Prior Work")
 	if len(prior) != 2 || prior[0].Note.Type != models.NoteTypeDailyWork {
 		t.Fatalf("type weighting order = %#v", prior)
